@@ -393,18 +393,6 @@ void show_task_mem(void)
 	dump_tasks(NULL, NULL);
 }
 
-/* dump extra info: HW memory usage */
-void oom_dump_extra_info(void)
-{
-#ifdef CONFIG_MTK_ION
-	ion_mm_heap_memory_detail();
-#endif
-#ifdef CONFIG_MTK_GPU_SUPPORT
-	if (mtk_dump_gpu_memory_usage() == false)
-		pr_info("mtk_dump_gpu_memory_usage not support\n");
-#endif
-}
-
 static void dump_header(struct oom_control *oc, struct task_struct *p,
 			struct mem_cgroup *memcg)
 {
@@ -420,13 +408,6 @@ static void dump_header(struct oom_control *oc, struct task_struct *p,
 	if (sysctl_oom_dump_tasks)
 		dump_tasks(memcg, oc->nodemask);
 
-#ifdef CONFIG_MTK_ION
-	ion_mm_heap_memory_detail();
-#endif
-#ifdef CONFIG_MTK_GPU_SUPPORT
-	if (mtk_dump_gpu_memory_usage() == false)
-		pr_warn("mtk_dump_gpu_memory_usage not support\n");
-#endif
 }
 
 /*
@@ -575,6 +556,13 @@ void oom_kill_process(struct oom_control *oc, struct task_struct *p,
 	 */
 	get_task_struct(hold);
 	read_lock(&tasklist_lock);
+
+	/*
+	 * The task 'p' might have already exited before reaching here. The
+	 * put_task_struct() will free task_struct 'p' while the loop still try
+	 * to access the field of 'p', so, get an extra reference.
+	 */
+	get_task_struct(p);
 	for_each_thread(p, t) {
 		list_for_each_entry(child, &t->children, sibling) {
 			unsigned int child_points;
@@ -594,6 +582,7 @@ void oom_kill_process(struct oom_control *oc, struct task_struct *p,
 			}
 		}
 	}
+	put_task_struct(p);
 	read_unlock(&tasklist_lock);
 
 	p = find_lock_task_mm(victim);

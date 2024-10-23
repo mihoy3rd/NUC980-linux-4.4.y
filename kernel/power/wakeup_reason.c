@@ -60,13 +60,6 @@ extern void mt_pmic_clear_wakesrc_count(void);
 extern void mt_eint_clear_wakesrc_count(void);
 
 extern const char *wakesrc_str[32];
-//Yongyao.Song@PSW.NW.PWR.1053636, 2017/08/01, add for modem wake up source
-#define MODEM_WAKEUP_SRC_NUM 10
-extern int data_wakeup_index;
-extern int modem_wakeup_src_count[MODEM_WAKEUP_SRC_NUM];
-extern char modem_wakeup_src_string[MODEM_WAKEUP_SRC_NUM][20];
-extern void modem_clear_wakeupsrc_count(void);
-//Yongyao.Song@PSW.NW.PWR add end
 #endif /* VENDOR_EDIT */
 
 #define MAX_WAKEUP_REASON_IRQS 32
@@ -137,62 +130,18 @@ static ssize_t ap_resume_reason_stastics_show(struct kobject *kobj, struct kobj_
 	return buf_offset;
 }
 
-//Yongyao.Song@PSW.NW.PWR.1053636, 2017/08/01, add for modem wake up source
-static ssize_t modem_resume_reason_stastics_show(struct kobject *kobj, struct kobj_attribute *attr,
-        char *buf)
-{
-        int max_wakeup_src_count = 0;
-        int max_wakeup_src_index = 0;
-        int i, total = 0;
-        int temp_d = 0;
-
-        for(i = 0; i < MODEM_WAKEUP_SRC_NUM; i++)
-        {
-            total += modem_wakeup_src_count[i];
-            printk(KERN_WARNING "%s wakeup %d times, total %d times\n",
-                    modem_wakeup_src_string[i],modem_wakeup_src_count[i],total);
-            if (i == data_wakeup_index)
-            {
-                temp_d = modem_wakeup_src_count[i] + (modem_wakeup_src_count[i]>>1);
-                printk(KERN_WARNING "%s wakeup real %d times, count %d times\n",
-                             modem_wakeup_src_string[i],modem_wakeup_src_count[i],temp_d);
-                if(temp_d > max_wakeup_src_count){
-                    max_wakeup_src_index = i;
-                    max_wakeup_src_count = temp_d;
-                }
-            }
-            else if (modem_wakeup_src_count[i] > max_wakeup_src_count)
-            {
-                max_wakeup_src_index = i;
-                max_wakeup_src_count = modem_wakeup_src_count[i];
-            }
-        }
-        return sprintf(buf, "%s:%d:%d\n", modem_wakeup_src_string[max_wakeup_src_index], max_wakeup_src_count, total);
-}
-
-static struct kobj_attribute modem_resume_reason_stastics = __ATTR_RO(modem_resume_reason_stastics);
-//Yongyao.Song@PSW.NW.PWR add end
 static struct kobj_attribute ap_resume_reason_stastics = __ATTR_RO(ap_resume_reason_stastics);
 #endif /* VENDOR_EDIT */
 
 static ssize_t last_resume_reason_show(struct kobject *kobj, struct kobj_attribute *attr,
 		char *buf)
 {
-/* Zhengding.Chen@BSP.Power.Basic, 2019/06/14, Add for batterystats count last resume wakeup source correctly*/
-#ifdef VENDOR_EDIT
-	int buf_offset = 0;
-#else
 	int irq_no, buf_offset = 0;
 	struct irq_desc *desc;
-#endif /* VENDOR_EDIT */
 	spin_lock(&resume_reason_lock);
 	if (suspend_abort) {
 		buf_offset = sprintf(buf, "Abort: %s", abort_reason);
 	} else {
-/* Zhengding.Chen@BSP.Power.Basic, 2019/06/14, Add for batterystats count last resume wakeup source correctly*/
-#ifdef VENDOR_EDIT
-		buf_offset = sprintf(buf, "0 %s\n", wakeup_source_buf);
-#else
 		for (irq_no = 0; irq_no < irqcount; irq_no++) {
 			desc = irq_to_desc(irq_list[irq_no]);
 			if (desc && desc->action && desc->action->name)
@@ -202,7 +151,6 @@ static ssize_t last_resume_reason_show(struct kobject *kobj, struct kobj_attribu
 				buf_offset += sprintf(buf + buf_offset, "%d\n",
 						irq_list[irq_no]);
 		}
-#endif /* VENDOR_EDIT */
 	}
 	spin_unlock(&resume_reason_lock);
 	return buf_offset;
@@ -273,9 +221,6 @@ static struct attribute *attrs[] = {
 	/* ChaoYing.Chen@BSP.Power.Basic.1056413, 2017/12/11, Add for print wakeup source */
 	&new_resume_reason.attr,
 	&ap_resume_reason_stastics.attr,
-	//Yongyao.Song@PSW.NW.PWR.1053636, 2017/08/01, add for modem wake up source
-	&modem_resume_reason_stastics.attr,
-	//Yongyao.Song@PSW.NW.PWR add end
 #endif /* VENDOR_EDIT */
 #ifdef VENDOR_EDIT
 //Wenxian.Zhen@BSP.Power.Basic, 2018/11/17, Add for  clean wake up source  according to echo reset >   /sys/kernel/wakeup_reasons/wakeup_stastisc_reset
@@ -386,9 +331,6 @@ void wakeup_src_clean(void)
 	mt_clear_wakesrc_count();
 	mt_pmic_clear_wakesrc_count();
 	mt_eint_clear_wakesrc_count();
-	//Yongyao.Song@PSW.NW.PWR.1053636, 2017/08/01, add for modem wake up source
-	modem_clear_wakeupsrc_count();
-	//Yongyao.Song@PSW.NW.PWR add end
 }
 EXPORT_SYMBOL(wakeup_src_clean);
 static int wakeup_src_fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data)

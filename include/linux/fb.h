@@ -163,14 +163,6 @@ struct fb_cursor_user {
 /*      A hardware display blank revert early change occured */
 #define FB_R_EARLY_EVENT_BLANK		0x11
 
-#ifdef VENDOR_EDIT
-/*
-* Ling.Guo@PSW.MM.Display.LCD.Stability, 2019/01/21,
-* add for fingerprint notify frigger
-*/
-#define MTK_ONSCREENFINGERPRINT_EVENT 0x20
-#endif /*VENDOR_EDIT*/
-
 struct fb_event {
 	struct fb_info *info;
 	void *data;
@@ -648,13 +640,6 @@ extern struct class *fb_class;
 
 extern int lock_fb_info(struct fb_info *info);
 
-#ifdef VENDOR_EDIT
-//jie.cheng@Swdp.shanghai, 2017/06/02, export kernel symbol
-extern struct fb_info *get_fb_info(unsigned int idx);
-extern unsigned int get_frame_cnt(void);
-extern unsigned int get_display_state(void);
-#endif
-
 static inline void unlock_fb_info(struct fb_info *info)
 {
 	mutex_unlock(&info->lock);
@@ -734,8 +719,6 @@ extern int fb_parse_edid(unsigned char *edid, struct fb_var_screeninfo *var);
 extern const unsigned char *fb_firmware_edid(struct device *device);
 extern void fb_edid_to_monspecs(unsigned char *edid,
 				struct fb_monspecs *specs);
-extern void fb_edid_add_monspecs(unsigned char *edid,
-				 struct fb_monspecs *specs);
 extern void fb_destroy_modedb(struct fb_videomode *modedb);
 extern int fb_find_mode_cvt(struct fb_videomode *mode, int margins, int rb);
 extern unsigned char *fb_ddc_read(struct i2c_adapter *adapter);
@@ -809,7 +792,6 @@ struct dmt_videomode {
 
 extern const char *fb_mode_option;
 extern const struct fb_videomode vesa_modes[];
-extern const struct fb_videomode cea_modes[65];
 extern const struct dmt_videomode dmt_modes[];
 
 struct fb_modelist {

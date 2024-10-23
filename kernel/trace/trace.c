@@ -303,10 +303,6 @@ int trace_array_get(struct trace_array *this_tr)
 
 	return ret;
 }
-#ifdef VENDOR_EDIT
-//cuixiaogang@Swdp.shanghai, 2017/12/11, export the ftrace interface
-EXPORT_SYMBOL(trace_array_get);
-#endif
 
 static void __trace_array_put(struct trace_array *this_tr)
 {
@@ -320,10 +316,6 @@ void trace_array_put(struct trace_array *this_tr)
 	__trace_array_put(this_tr);
 	mutex_unlock(&trace_types_lock);
 }
-#ifdef VENDOR_EDIT
-//cuixiaogang@Swdp.shanghai, 2017/12/11, export the ftrace interface
-EXPORT_SYMBOL(trace_array_put);
-#endif
 
 int filter_check_discard(struct trace_event_file *file, void *rec,
 			 struct ring_buffer *buffer,
@@ -529,12 +521,7 @@ static inline void ftrace_trace_stack(struct trace_array *tr,
 
 #endif
 
-#ifdef VENDOR_EDIT
-//cuixiaogang@Swdp.shanghai, 2017/12/11, export the ftrace interface
-void tracer_tracing_on(struct trace_array *tr)
-#else
 static void tracer_tracing_on(struct trace_array *tr)
-#endif
 {
 	if (tr->trace_buffer.buffer)
 		ring_buffer_record_on(tr->trace_buffer.buffer);
@@ -550,10 +537,6 @@ static void tracer_tracing_on(struct trace_array *tr)
 	/* Make the flag seen by readers */
 	smp_wmb();
 }
-#ifdef VENDOR_EDIT
-//cuixiaogang@Swdp.shanghai, 2017/12/11, export the ftrace interface
-EXPORT_SYMBOL(tracer_tracing_on);
-#endif
 
 /**
  * tracing_on - enable tracing buffers
@@ -807,12 +790,7 @@ void tracing_snapshot_alloc(void)
 EXPORT_SYMBOL_GPL(tracing_snapshot_alloc);
 #endif /* CONFIG_TRACER_SNAPSHOT */
 
-#ifdef VENDOR_EDIT
-//cuixiaogang@Swdp.shanghai, 2017/12/11, export the ftrace interface
-void tracer_tracing_off(struct trace_array *tr)
-#else
 static void tracer_tracing_off(struct trace_array *tr)
-#endif
 {
 	if (tr->trace_buffer.buffer)
 		ring_buffer_record_off(tr->trace_buffer.buffer);
@@ -828,10 +806,6 @@ static void tracer_tracing_off(struct trace_array *tr)
 	/* Make the flag seen by readers */
 	smp_wmb();
 }
-#ifdef VENDOR_EDIT
-//cuixiaogang@Swdp.shanghai, 2017/12/11, export the ftrace interface
-EXPORT_SYMBOL(tracer_tracing_off);
-#endif
 
 /**
  * tracing_off - turn off tracing buffers
@@ -1864,7 +1838,17 @@ void trace_buffer_unlock_commit_regs(struct trace_array *tr,
 {
 	__buffer_unlock_commit(buffer, event);
 
-	ftrace_trace_stack(tr, buffer, flags, 0, pc, regs);
+	/*
+	 * If regs is not set, then skip the following callers:
+	 *   trace_buffer_unlock_commit_regs
+	 *   event_trigger_unlock_commit
+	 *   trace_event_buffer_commit
+	 *   trace_event_raw_event_sched_switch
+	 * Note, we can still get here via blktrace, wakeup tracer
+	 * and mmiotrace, but that's ok if they lose a function or
+	 * two. They are that meaningful.
+	 */
+	ftrace_trace_stack(tr, buffer, flags, regs ? 0 : 4, pc, regs);
 	ftrace_trace_userstack(buffer, flags, pc);
 }
 EXPORT_SYMBOL_GPL(trace_buffer_unlock_commit_regs);
@@ -1921,6 +1905,13 @@ static void __ftrace_trace_stack(struct ring_buffer *buffer,
 
 	trace.nr_entries	= 0;
 	trace.skip		= skip;
+
+	/*
+	 * Add two, for this function and the call to save_stack_trace()
+	 * If regs is set, then these functions will not be in the way.
+	 */
+	if (!regs)
+		trace.skip += 2;
 
 	/*
 	 * Since events can happen in NMIs there's no safe way to
@@ -3242,7 +3233,8 @@ __tracing_open(struct inode *inode, struct file *file, bool snapshot)
 	if (iter->cpu_file == RING_BUFFER_ALL_CPUS) {
 		for_each_tracing_cpu(cpu) {
 			iter->buffer_iter[cpu] =
-				ring_buffer_read_prepare(iter->trace_buffer->buffer, cpu);
+				ring_buffer_read_prepare(iter->trace_buffer->buffer,
+							 cpu, GFP_KERNEL);
 		}
 		ring_buffer_read_prepare_sync();
 		for_each_tracing_cpu(cpu) {
@@ -3252,7 +3244,8 @@ __tracing_open(struct inode *inode, struct file *file, bool snapshot)
 	} else {
 		cpu = iter->cpu_file;
 		iter->buffer_iter[cpu] =
-			ring_buffer_read_prepare(iter->trace_buffer->buffer, cpu);
+			ring_buffer_read_prepare(iter->trace_buffer->buffer,
+						 cpu, GFP_KERNEL);
 		ring_buffer_read_prepare_sync();
 		ring_buffer_read_start(iter->buffer_iter[cpu]);
 		tracing_iter_reset(iter, cpu);
@@ -3490,14 +3483,27 @@ static int show_traces_open(struct inode *inode, struct file *file)
 	if (tracing_disabled)
 		return -ENODEV;
 
+	if (trace_array_get(tr) < 0)
+		return -ENODEV;
+
 	ret = seq_open(file, &show_traces_seq_ops);
-	if (ret)
+	if (ret) {
+		trace_array_put(tr);
 		return ret;
+	}
 
 	m = file->private_data;
 	m->private = tr;
 
 	return 0;
+}
+
+static int show_traces_release(struct inode *inode, struct file *file)
+{
+	struct trace_array *tr = inode->i_private;
+
+	trace_array_put(tr);
+	return seq_release(inode, file);
 }
 
 static ssize_t
@@ -3530,8 +3536,8 @@ static const struct file_operations tracing_fops = {
 static const struct file_operations show_traces_fops = {
 	.open		= show_traces_open,
 	.read		= seq_read,
-	.release	= seq_release,
 	.llseek		= seq_lseek,
+	.release	= show_traces_release,
 };
 
 static ssize_t
@@ -3725,12 +3731,7 @@ int set_tracer_flag(struct trace_array *tr, unsigned int mask, int enabled)
 	return 0;
 }
 
-#ifdef VENDOR_EDIT
-//cuixiaogang@Swdp.shanghai, 2017/12/11, export the ftrace interface
-int trace_set_options(struct trace_array *tr, char *option)
-#else
 static int trace_set_options(struct trace_array *tr, char *option)
-#endif
 {
 	char *cmp;
 	int neg = 0;
@@ -3769,25 +3770,6 @@ static int trace_set_options(struct trace_array *tr, char *option)
 
 	return ret;
 }
-#ifdef VENDOR_EDIT
-//cuixiaogang@Swdp.shanghai, 2017/12/11, export the ftrace interface
-EXPORT_SYMBOL(trace_set_options);
-
-int get_system_default_ftrace(struct trace_array ** tr_ret)
-{
-	struct trace_array *tr = &global_trace;
-
-	if (tracing_disabled)
-		return -ENODEV;
-
-	if (trace_array_get(tr) < 0)
-		return -ENODEV;
-
-	*tr_ret = tr;
-	return 0;
-}
-EXPORT_SYMBOL(get_system_default_ftrace);
-#endif
 
 static void __init apply_trace_boot_options(void)
 {
@@ -4556,10 +4538,6 @@ out:
 
 	return ret;
 }
-#ifdef VENDOR_EDIT
-//cuixiaogang@Swdp.shanghai, 2017/12/11, export the ftrace interface
-EXPORT_SYMBOL(tracing_resize_ring_buffer);
-#endif
 
 
 /**
@@ -4877,7 +4855,6 @@ out:
 	return ret;
 
 fail:
-	kfree(iter->trace);
 	kfree(iter);
 	__trace_array_put(tr);
 	mutex_unlock(&trace_types_lock);
@@ -5020,6 +4997,7 @@ waitagain:
 	       sizeof(struct trace_iterator) -
 	       offsetof(struct trace_iterator, seq));
 	cpumask_clear(iter->started);
+	trace_seq_init(&iter->seq);
 	iter->pos = -1;
 
 	trace_event_read_lock();
@@ -5473,44 +5451,6 @@ static int tracing_clock_show(struct seq_file *m, void *v)
 	return 0;
 }
 
-#ifdef VENDOR_EDIT
-//cuixiaogang@Swdp.shanghai, 2017/12/11, export the ftrace interface
-int tracing_clock_update(struct trace_array *tr, const char *buf)
-{
-	const char *clockstr = buf;
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(trace_clocks); i++) {
-		if (strcmp(trace_clocks[i].name, clockstr) == 0)
-			break;
-	}
-	if (i == ARRAY_SIZE(trace_clocks))
-		return -EINVAL;
-
-	mutex_lock(&trace_types_lock);
-
-	tr->clock_id = i;
-
-	ring_buffer_set_clock(tr->trace_buffer.buffer, trace_clocks[i].func);
-
-	/*
-	 * New clock may not be consistent with the previous clock.
-	 * Reset the buffer so that it doesn't have incomparable timestamps.
-	 */
-	tracing_reset_online_cpus(&tr->trace_buffer);
-
-#ifdef CONFIG_TRACER_MAX_TRACE
-	if (tr->flags & TRACE_ARRAY_FL_GLOBAL && tr->max_buffer.buffer)
-		ring_buffer_set_clock(tr->max_buffer.buffer, trace_clocks[i].func);
-	tracing_reset_online_cpus(&tr->max_buffer);
-#endif
-
-	mutex_unlock(&trace_types_lock);
-	return 0;
-}
-EXPORT_SYMBOL(tracing_clock_update);
-#endif
-
 static int tracing_set_clock(struct trace_array *tr, const char *clockstr)
 {
 	int i;
@@ -5680,11 +5620,15 @@ tracing_snapshot_write(struct file *filp, const char __user *ubuf, size_t cnt,
 			break;
 		}
 #endif
-		if (!tr->allocated_snapshot) {
+		if (!tr->allocated_snapshot)
+			ret = resize_buffer_duplicate_size(&tr->max_buffer,
+				&tr->trace_buffer, iter->cpu_file);
+		else
 			ret = alloc_snapshot(tr);
-			if (ret < 0)
-				break;
-		}
+
+		if (ret < 0)
+			break;
+
 		local_irq_disable();
 		/* Now, we're going to swap */
 		if (iter->cpu_file == RING_BUFFER_ALL_CPUS)
@@ -6794,7 +6738,9 @@ rb_simple_write(struct file *filp, const char __user *ubuf,
 		if (ring_buffer_record_is_on(buffer) ^ val)
 			pr_debug("[ftrace]tracing_on is toggled to %lu\n", val);
 		mutex_lock(&trace_types_lock);
-		if (val) {
+		if (!!val == tracer_tracing_is_on(tr)) {
+			val = 0; /* do nothing */
+		} else if (val) {
 			tracer_tracing_on(tr);
 #ifdef CONFIG_MTK_SCHED_TRACERS
 			trace_tracing_on(val, CALLER_ADDR0);
@@ -6933,12 +6879,7 @@ static void update_tracer_options(struct trace_array *tr)
 	mutex_unlock(&trace_types_lock);
 }
 
-#ifdef VENDOR_EDIT
-//cuixiaogang@Swdp.shanghai, 2017/12/11, export the ftrace interface
-int instance_mkdir(const char *name)
-#else
 static int instance_mkdir(const char *name)
-#endif
 {
 	struct trace_array *tr;
 	int ret;
@@ -7011,17 +6952,8 @@ static int instance_mkdir(const char *name)
 	return ret;
 
 }
-#ifdef VENDOR_EDIT
-//cuixiaogang@Swdp.shanghai, 2017/12/11, export the ftrace interface
-EXPORT_SYMBOL(instance_mkdir);
-#endif
 
-#ifdef VENDOR_EDIT
-//cuixiaogang@Swdp.shanghai, 2017/12/11, export the ftrace interface
-int instance_rmdir(const char *name)
-#else
 static int instance_rmdir(const char *name)
-#endif
 {
 	struct trace_array *tr;
 	int found = 0;
@@ -7068,10 +7000,6 @@ static int instance_rmdir(const char *name)
 
 	return ret;
 }
-#ifdef VENDOR_EDIT
-//cuixiaogang@Swdp.shanghai, 2017/12/11, export the ftrace interface
-EXPORT_SYMBOL(instance_rmdir);
-#endif
 
 static __init void create_trace_instances(struct dentry *d_tracer)
 {
@@ -7495,12 +7423,8 @@ void ftrace_dump(enum ftrace_dump_mode oops_dump_mode)
 
 		cnt++;
 
-		/* reset all but tr, trace, and overruns */
-		memset(&iter.seq, 0,
-		       sizeof(struct trace_iterator) -
-		       offsetof(struct trace_iterator, seq));
+		trace_iterator_reset(&iter);
 		iter.iter_flags |= TRACE_FILE_LAT_FMT;
-		iter.pos = -1;
 
 		if (trace_find_next_entry_inc(&iter) != NULL) {
 			int ret;

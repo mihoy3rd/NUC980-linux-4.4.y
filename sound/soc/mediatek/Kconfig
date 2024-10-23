@@ -255,10 +255,5 @@ config OPPO_KTV_DEV
 	default n
 	help
 	    This will enable KTV feature
-
-#Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/09/27, add for SIA PA ALGO
-config SIA_PA_ALGO
-	bool "Use SIA PA ALGO"
-	default n
 #endif /*VENDOR_EDIT*/
 

@@ -3025,11 +3025,6 @@ static int tfa98xx_startup(struct snd_pcm_substream *substream,
 		}
 	}
 
-#ifdef VENDOR_EDIT
-/* Yongzhi.Zhang@@PSW.MM.AudioDriver.SmartPA, 2018/08/17,
- * add for fixing memory leakage */
-	devm_kfree(tfa98xx->codec->dev, basename);
-#endif /* VENDOR_EDIT */
 
 	return snd_pcm_hw_constraint_list(substream->runtime, 0,
 				   SNDRV_PCM_HW_PARAM_RATE,
@@ -4077,7 +4072,7 @@ static int __init tfa98xx_i2c_init(void)
 	}
 	/* Xiaojun.Lv@PSW.MM.AudioDriver.Codec, 2018/05/12, Add for 18011 & 18311 temp debug */
 	if ((get_project() == 18011) || (get_project() == 18311) || (get_project() == 18531) ||
-	    (get_project() == 18561) || (get_project() == 18161) || (get_project() == 19531)) {
+	    (get_project() == 18561) || (get_project() == 18161)) {
 		return 0;
 	}
 #endif /* VENDOR_EDIT */

@@ -1,6 +1,6 @@
 VERSION = 4
 PATCHLEVEL = 4
-SUBLEVEL = 153
+SUBLEVEL = 206
 EXTRAVERSION =
 NAME = Blurry Fish Butt
 
@@ -14,6 +14,7 @@ NAME = Blurry Fish Butt
 #   (this increases performance and avoids hard-to-debug behaviour);
 # o Look for make include files relative to root of kernel src
 MAKEFLAGS += -rR --include-dir=$(CURDIR)
+
 
 # Avoid funny character set dependencies
 unexport LC_ALL
@@ -306,11 +307,6 @@ HOSTCXX      = g++
 HOSTCFLAGS   := -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer -std=gnu89
 HOSTCXXFLAGS = -O2
 
-ifeq ($(shell $(HOSTCC) -v 2>&1 | grep -c "clang version"), 1)
-HOSTCFLAGS  += -Wno-unused-value -Wno-unused-parameter \
-		-Wno-missing-field-initializers -fno-delete-null-pointer-checks
-endif
-
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
 
@@ -407,6 +403,12 @@ KBUILD_AFLAGS   := -D__ASSEMBLY__ $(call cc-option,-fno-PIE)
 KBUILD_AFLAGS_MODULE  := -DMODULE
 KBUILD_CFLAGS_MODULE  := -DMODULE
 KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
+TARGET_BUILD_VARIANT := user
+TARGET_PRODUCT := full_oppo6771
+OPPO_BUILD_TYPE := release
+VENDOR_EDIT := 1
+OPPO_17065 := 1
+OPPO_17061 := 1
 
 #ifdef  VENDOR_EDIT
 #LiPing-m@PSW.MM.Display.LCD.Machine, 2017/11/03, Add for VENDOR_EDIT macro in kernel
@@ -414,61 +416,6 @@ KBUILD_CFLAGS +=   -DVENDOR_EDIT
 KBUILD_CPPFLAGS += -DVENDOR_EDIT
 CFLAGS_KERNEL +=   -DVENDOR_EDIT
 CFLAGS_MODULE +=   -DVENDOR_EDIT
-#endif /* VENDOR_EDIT */
-#ifdef VENDOR_EDIT
-#//Liang.Zhang@PSW.TECH.Bootup, 2018/10/19, Add for kernel monitor whole bootup
-#ifdef HANG_OPPO_ALL
-KBUILD_CFLAGS +=   -DHANG_OPPO_ALL
-KBUILD_CPPFLAGS += -DHANG_OPPO_ALL
-CFLAGS_KERNEL +=   -DHANG_OPPO_ALL
-CFLAGS_MODULE +=   -DHANG_OPPO_ALL
-#ifdef VENDOR_EDIT
-#Bin.Yan@PSW.AD.BuildConfig.BaseConfig.1068615, 2017/08/28,Add for disallow system remount
-ifneq ($(SPECIAL_OPPO_CONFIG),1)
-ifneq ($(SPECIAL_OPPO_PERFORMANCE),1)
-    ifneq ($(filter release,$(OPPO_BUILD_TYPE)),)
-        ifneq ($(OPPO_ALLOW_KEY_INTERFACES),true)
-            ifeq ($(filter allnetcttest allnetcmcctest allnetcmccfield allnetctfield,$(NET_BUILD_TYPE)),)
-                KBUILD_CFLAGS += -DOPPO_DISALLOW_KEY_INTERFACES
-            endif
-        endif
-    endif
-endif
-endif
-#endif /* VENDOR_EDIT */
-
-#ifdef VENDOR_EDIT
-#Haiping.Zhong@PSW.AD.BuildConfig.BaseConfig.0, 2019/01/08, Add for build root disable dm verity
-ifeq ($(OPPO_BUILD_ROOT_DISABLE_DM_VERITY),true)
-    KBUILD_CFLAGS += -DOPPO_BUILD_ROOT_DISABLE_DM_VERITY
-endif
-#endif /* VENDOR_EDIT */
-
-#ifdef VENDOR_EDIT
-#ye.zhang@Sensor.config,2016-09-09, add for CTSI support external storage or not
-$(info @@@@@@@@@@@ 111 OPPO_BUILD_CUSTOMIZE is $(OPPO_BUILD_CUSTOMIZE))
-ifneq ($(OPPO_BUILD_CUSTOMIZE),)
-$(info @@@@@@@@@@@ 222 OPPO_BUILD_CUSTOMIZE is $(OPPO_BUILD_CUSTOMIZE))
-KBUILD_CFLAGS += -DMOUNT_EXSTORAGE_IF
-KBUILD_CPPFLAGS += -DMOUNT_EXSTORAGE_IF
-CFLAGS_KERNEL += -DMOUNT_EXSTORAGE_IF
-CFLAGS_MODULE += -DMOUNT_EXSTORAGE_IF
-endif
-
-#ifdef VENDOR_EDIT
-#xing.xiong@BSP.Kernel.Driver, 2018/10/16, Add for oppo reserve partition
-ifneq ($(filter oppo6771_17197 oppo6771_18311 oppo6771_17331 oppo6771_17061 oppo6771_18011, $(OPPO_TARGET_DEVICE)),)
-CFLAGS_KERNEL += -DOPPO_RESERVE_USE_LEGACY
-CFLAGS_MODULE += -DOPPO_RESERVE_USE_LEGACY
-endif
-
-#ifdef VENDOR_EDIT
-#Tong.Han@Bsp.Group.Stability, 2017/07/28, Add for aging test version config
-ifeq ($(SPECIAL_OPPO_CONFIG),1)
-KBUILD_CFLAGS += -DCONFIG_OPPO_SPECIAL_BUILD
-#Wen.Luo@Bsp.Kernel.Stability, 2018/12/05, Add for Debug Config, DEATH_HEALER config
-#OPPO_AGING_TEST := true
-endif
 #endif /* VENDOR_EDIT */
 
 #ifdef VENDOR_EDIT
@@ -488,7 +435,7 @@ endif
 
 ifeq ($(OPPO_BUILD_TYPE),release)
     $(info  wendebug kernel release)
-    ifneq ($(SPECIAL_OPPO_CONFIG),1)
+    ifeq ($(SPECIAL_OPPO_CONFIG),1)
         OPPO_SLUB_TEST :=
         OPPO_KASAN_TEST :=
         OPPO_KMEMLEAK_TEST :=
@@ -504,21 +451,7 @@ KBUILD_CPPFLAGS += -DCONFIG_OPPO_REALEASE_BUILD
 endif
 #endif /* VENDOR_EDIT */
 
-#ifdef VENDOR_EDIT
-#Jianchao.Shi@PSW.BSP.CHG.Basic, 2019/05/09, sjc Add for 806 high/low temp aging test
-ifeq ($(OPPO_HIGH_TEMP_VERSION),true)
-KBUILD_CFLAGS += -DCONFIG_HIGH_TEMP_VERSION
-KBUILD_CPPFLAGS += -DCONFIG_HIGH_TEMP_VERSION
-endif
-#endif /* VENDOR_EDIT */
 
-#ifdef VENDOR_EDIT
-#Ling.Guo@PSW.MM.Display.LCD, 2018/01/24, Add for cmcc test.
-ifneq ($(filter allnetcmccfield allnetcmcctest allnetctfield allnetcttest allnetcutest,$(NET_BUILD_TYPE)),)
-KBUILD_CFLAGS += -DOPPO_CTTEST_FLAG
-KBUILD_CPPFLAGS += -DOPPO_CTTEST_FLAG
-endif
-#endif /* VENDOR_EDIT */
 
 #Guohua.Zhong@BSP.Storage.Sdcard 2018/01/18 ,add for recogonizing release build
 ifneq ($(filter release cts cta,$(OPPO_BUILD_TYPE)),)
@@ -548,12 +481,18 @@ export MAKE AWK GENKSYMS INSTALLKERNEL PERL PYTHON UTS_MACHINE
 export HOSTCXX HOSTCXXFLAGS LDFLAGS_MODULE CHECK CHECKFLAGS
 
 export KBUILD_CPPFLAGS NOSTDINC_FLAGS LINUXINCLUDE OBJCOPYFLAGS LDFLAGS
-export KBUILD_CFLAGS CFLAGS_KERNEL CFLAGS_MODULE CFLAGS_GCOV CFLAGS_KCOV CFLAGS_KASAN
+export KBUILD_CFLAGS CFLAGS_KERNEL CFLAGS_MODULE CFLAGS_GCOV
 export CFLAGS_KASAN CFLAGS_KASAN_NOSANITIZE
+export CFLAGS_KCOV
 export KBUILD_AFLAGS AFLAGS_KERNEL AFLAGS_MODULE
 export KBUILD_AFLAGS_MODULE KBUILD_CFLAGS_MODULE KBUILD_LDFLAGS_MODULE
 export KBUILD_AFLAGS_KERNEL KBUILD_CFLAGS_KERNEL
 export KBUILD_ARFLAGS
+export TARGET_BUILD_VARIANT
+export TARGET_PRODUCT
+export VENDOR_EDIT
+export OPPO_17065
+export OPPO_17061
 
 # When compiling out-of-tree modules, put MODVERDIR in the module
 # tree rather than in the kernel tree. The kernel tree might
@@ -742,6 +681,23 @@ endif # $(dot-config)
 # Defaults to vmlinux, but the arch makefile usually adds further targets
 all: vmlinux
 
+ifeq ($(cc-name),clang)
+ifneq ($(CROSS_COMPILE),)
+CLANG_TRIPLE    ?= $(CROSS_COMPILE)
+CLANG_TARGET	:= --target=$(notdir $(CLANG_TRIPLE:%-=%))
+GCC_TOOLCHAIN_DIR := $(dir $(shell which $(CROSS_COMPILE)elfedit))
+CLANG_PREFIX	:= --prefix=$(GCC_TOOLCHAIN_DIR)
+GCC_TOOLCHAIN	:= $(realpath $(GCC_TOOLCHAIN_DIR)/..)
+endif
+ifneq ($(GCC_TOOLCHAIN),)
+CLANG_GCC_TC	:= --gcc-toolchain=$(GCC_TOOLCHAIN)
+endif
+KBUILD_CFLAGS += $(CLANG_TARGET) $(CLANG_GCC_TC) $(CLANG_PREFIX)
+KBUILD_AFLAGS += $(CLANG_TARGET) $(CLANG_GCC_TC) $(CLANG_PREFIX)
+KBUILD_CFLAGS += $(call cc-option, -no-integrated-as)
+KBUILD_AFLAGS += $(call cc-option, -no-integrated-as)
+endif
+
 # The arch Makefile can set ARCH_{CPP,A,C}FLAGS to override the default
 # values of the respective KBUILD_* variables
 ARCH_CPPFLAGS :=
@@ -755,16 +711,21 @@ KBUILD_CFLAGS	+= $(call cc-disable-warning,frame-address,)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, format-truncation)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, format-overflow)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, int-in-bool-context)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, address-of-packed-member)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, attribute-alias)
 
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
-KBUILD_CFLAGS	+= $(call cc-option,-Oz,-Os)
+KBUILD_CFLAGS	+= -Os
 else
 ifdef CONFIG_PROFILE_ALL_BRANCHES
 KBUILD_CFLAGS	+= -O2
 else
 KBUILD_CFLAGS   += -O2
 endif
+endif
+
+ifdef CONFIG_CC_WERROR
+KBUILD_CFLAGS	+= -Werror
 endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
@@ -844,6 +805,10 @@ ifneq ($(CROSS_COMPILE),)
 CLANG_TRIPLE    ?= $(CROSS_COMPILE)
 CLANG_TARGET	:= --target=$(notdir $(CLANG_TRIPLE:%-=%))
 GCC_TOOLCHAIN	:= $(realpath $(dir $(shell which $(LD)))/..)
+CLANG_FLAGS     += -fno-builtin-bcmp
+KBUILD_CFLAGS   += $(CLANG_FLAGS)
+export CLANG_FLAGS
+
 endif
 ifneq ($(GCC_TOOLCHAIN),)
 CLANG_GCC_TC	:= --gcc-toolchain=$(GCC_TOOLCHAIN)
@@ -852,9 +817,9 @@ KBUILD_CFLAGS += $(CLANG_TARGET) $(CLANG_GCC_TC)
 KBUILD_AFLAGS += $(CLANG_TARGET) $(CLANG_GCC_TC)
 KBUILD_CPPFLAGS += $(call cc-option,-Qunused-arguments,)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
+KBUILD_CPPFLAGS += $(call cc-option,-Qunused-arguments,)
 KBUILD_CFLAGS += $(call cc-disable-warning, format-invalid-specifier)
 KBUILD_CFLAGS += $(call cc-disable-warning, gnu)
-KBUILD_CFLAGS += $(call cc-disable-warning, address-of-packed-member)
 KBUILD_CFLAGS += $(call cc-disable-warning, duplicate-decl-specifier)
 # Quiet clang warning: comparison of unsigned expression < 0 is always false
 KBUILD_CFLAGS += $(call cc-disable-warning, tautological-compare)
@@ -863,16 +828,14 @@ KBUILD_CFLAGS += $(call cc-disable-warning, tautological-compare)
 # See modpost pattern 2
 KBUILD_CFLAGS += $(call cc-option, -mno-global-merge,)
 KBUILD_CFLAGS += $(call cc-option, -fcatch-undefined-behavior)
-KBUILD_CFLAGS += $(call cc-option, -no-integrated-as)
-KBUILD_AFLAGS += $(call cc-option, -no-integrated-as)
 else
 
 # These warnings generated too much noise in a regular build.
-# Use make W=1 to enable them (see scripts/Makefile.build)
+# Use make W=1 to enable them (see scripts/Makefile.extrawarn)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
-KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
 endif
 
+KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
 ifdef CONFIG_FRAME_POINTER
 KBUILD_CFLAGS	+= -fno-omit-frame-pointer -fno-optimize-sibling-calls
 else
@@ -938,6 +901,9 @@ KBUILD_CFLAGS += $(call cc-option,-Wdeclaration-after-statement,)
 # disable pointer signed / unsigned warnings in gcc 4.0
 KBUILD_CFLAGS += $(call cc-disable-warning, pointer-sign)
 
+# disable stringop warnings in gcc 8+
+KBUILD_CFLAGS += $(call cc-disable-warning, stringop-truncation)
+
 # disable invalid "can't wrap" optimizations for signed / pointers
 KBUILD_CFLAGS	+= $(call cc-option,-fno-strict-overflow)
 
@@ -967,6 +933,11 @@ KBUILD_CFLAGS   += $(call cc-option,-Werror=date-time)
 
 # temporary workaround clang build errors
 KBUILD_CFLAGS   += $(call cc-disable-warning,enum-conversion,)
+# ensure -fcf-protection is disabled when using retpoline as it is
+# incompatible with -mindirect-branch=thunk-extern
+ifdef CONFIG_RETPOLINE
+KBUILD_CFLAGS += $(call cc-option,-fcf-protection=none)
+endif
 
 # use the deterministic mode of AR if available
 KBUILD_ARFLAGS := $(call ar-option,D)
