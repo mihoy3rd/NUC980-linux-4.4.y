@@ -30,17 +30,18 @@ jobs:
         run: |
           sudo rm /bin/python
           sudo ln -s /bin/python2.7 /bin/python
+          
       - name: Get Clang toolchain
         run: |
-          git clone --depth=1 https://github.com/kardebayan/android_prebuilts_clang_host_linux-x86_clang-5696680 clang
+          git clone --depth=1 https://github.com/kardebayan/android_prebuilts_clang_host_linux-x86_clang-5696680 $GITHUB_WORKSPACE/workdir/clang
      
       - name: Get GCC toolchain
         run: |
-          git clone --depth=1 https://github.com/KudProject/arm-linux-androideabi-4.9 gcc32
+          git clone --depth=1 https://github.com/KudProject/arm-linux-androideabi-4.9 $GITHUB_WORKSPACE/workdir/gcc32
      
       - name: Get Clang toolchain
         run: |
-          git clone --depth=1 https://github.com/KudProject/aarch64-linux-android-4.9 gcc
+          git clone --depth=1 https://github.com/KudProject/aarch64-linux-android-4.9 $GITHUB_WORKSPACE/workdir/gcc
 
       - name: Get Kernel souce
         run: |
@@ -50,18 +51,17 @@ jobs:
         run: |
           export KBUILD_BUILD_HOST=Github-Action
           export KBUILD_BUILD_USER=$(echo ${{ github.actor }} | tr A-Z a-z)
-          export ARCH="arm64"
-          export SUBARCH="arm64"
-          export PATH="$GITHUB_WORKSPACE/workdir/clang/bin:$GITHUB_WORKSPACE/workdir/gcc/bin:$GITHUB_WORKSPACE/workdir/gcc32/bin:${PATH}"
+          PATH="$GITHUB_WORKSPACE/workdir/clang/bin:$GITHUB_WORKSPACE/workdir/gcc/bin:$GITHUB_WORKSPACE/workdir/gcc32/bin:${PATH}"
           export KBUILD_COMPILER_STRING="$($GITHUB_WORKSPACE/workdir/clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
-          export CC=clang
-          export CLANG_TRIPLE="aarch64-linux-gnu-"
-          export CROSS_COMPILE="aarch64-linux-android-"
-          export CROSS_COMPILE_ARM32="arm-linux-androideabi-"
+          export ARCH=arm64
           cd $GITHUB_WORKSPACE/workdir/source
-          export OPPO_TARGET_DEVICE="MSM_19350"
-          make O=out oppo6771_19350_defconfig
-          make -j$(nproc --all) O=out
+          make -j$(nproc) O=out ARCH=arm64 oppo6771_19350_defconfig
+          make -j$(nproc) O=out \
+                          ARCH=arm64 \
+                          CC=clang \
+                          CLANG_TRIPLE=aarch64-linux-gnu- \
+                          CROSS_COMPILE=aarch64-linux-android- \
+                          CROSS_COMPILE_ARM32=arm-linux-androideabi-
 
       - name: Check a kernel output files
         run: |
