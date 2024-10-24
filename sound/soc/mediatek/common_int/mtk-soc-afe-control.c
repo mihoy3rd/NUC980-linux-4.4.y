@@ -1503,10 +1503,6 @@ bool SetI2SDacEnable(bool bEnable)
 		SetDLSrcEnable(false);
 		Afe_Set_Reg(AFE_I2S_CON1, bEnable, 0x1);
 		SetADDAEnable(false);
-
-		/* should delayed 1/fs(smallest is 8k) = 125us before afe off */
-		usleep_range(125, 150);
-
 #ifdef CONFIG_FPGA_EARLY_PORTING
 		pr_warn("%s(), disable fpga clock divide by 4", __func__);
 		Afe_Set_Reg(FPGA_CFG0, 0x0 << 1, 0x1 << 1);
@@ -2654,12 +2650,12 @@ void auddrv_dl1_write_handler(kal_uint32 bytes)
 
 	spin_lock_irqsave(&ktv_dl_data_lock, flags);
 
-	if (((user_block->u4DMAReadIdx + afe_block->u4BufferSize - afe_block->u4DMAReadIdx) % afe_block->u4BufferSize) >= NOISE_OFFSET * 4) {
-		pr_warn("%s: data speed does not match, reset\n", __func__);
+	if (((user_block->u4DMAReadIdx + afe_block->u4BufferSize - afe_block->u4DMAReadIdx) % afe_block->u4BufferSize) >= NOISE_OFFSET * 8) {
+		pr_warn("%s: data speed does not match, remained %d bytes, reset\n", __func__, afe_block->u4DataRemained);
 		auddrv_dl1_write_init();
 	}
 	if (((user_block->u4DMAReadIdx + afe_block->u4BufferSize - afe_block->u4DMAReadIdx) % afe_block->u4BufferSize) <= NOISE_MIN_OFFSET) {
-		pr_warn("%s: offset is not enough, reset\n", __func__);
+		pr_warn("%s: offset is not enough, remained %d bytes, reset\n", __func__, afe_block->u4DataRemained);
 		auddrv_dl1_write_init();
 	}
 

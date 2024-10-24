@@ -372,6 +372,10 @@ int AudDrv_btcvsd_Free_Buffer(kal_uint8 isRX)
 int AudDrv_BTCVSD_IRQ_handler(void)
 {
 	kal_uint32 uPacketType, uPacketNumber, uPacketLength, uBufferCount_TX, uBufferCount_RX, uControl;
+	static DEFINE_RATELIMIT_STATE(_rs, 2 * HZ, 1);
+
+	if (__ratelimit(&_rs))
+		pr_debug("+%s, irq=%d\n", __func__, btcvsd_irq_number);
 
 	LOGBT("+%s, irq=%d\n", __func__, btcvsd_irq_number);
 

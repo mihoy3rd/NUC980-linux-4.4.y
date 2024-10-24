@@ -98,6 +98,11 @@
 
 #include <mt-plat/fpsgo_common.h>
 
+#ifdef VENDOR_EDIT
+// Liujie.Xie@TECH.Kernel.Sched, 2019/05/22, add for ui first
+#include <linux/oppocfs/oppo_cfs_common.h>
+#endif
+
 enum ipi_msg_type {
 	IPI_RESCHEDULE,
 	IPI_CALL_FUNC,
@@ -3247,6 +3252,13 @@ void scheduler_tick(void)
 	cal_cpu_load(cpu);
 #endif
 
+#ifdef VENDOR_EDIT
+// Liujie.Xie@TECH.Kernel.Sched, 2019/05/22, add for ui first
+    if (sysctl_uifirst_enabled) {
+        trigger_ux_balance(rq);
+    }
+#endif
+
 #ifdef CONFIG_MTK_SCHED_RQAVG_KS
 	sched_max_util_task_tracking();
 #endif
@@ -3496,6 +3508,21 @@ again:
 	BUG(); /* the idle class will always have a runnable task */
 }
 
+#if defined(VENDOR_EDIT) && defined(CONFIG_PROCESS_RECLAIM) && defined(CONFIG_OPPO_SPECIAL_BUILD)
+/* Kui.Zhang@PSW.BSP.Kernel.Performance, 2019-02-26,
+ * collect reclaimed_shrinked task schedule record
+ */
+static inline void collect_reclaimed_task(struct task_struct *prev,
+		struct task_struct *next)
+{
+	if (next->flags & PF_RECLAIM_SHRINK)
+		next->reclaim_ns = sched_clock();
+
+	if (prev->flags & PF_RECLAIM_SHRINK)
+		prev->reclaim_run_ns += sched_clock() - prev->reclaim_ns;
+}
+#endif
+
 /*
  * __schedule() is the main scheduler function.
  *
@@ -3601,6 +3628,11 @@ static void __sched notrace __schedule(bool preempt)
 		}
 		switch_count = &prev->nvcsw;
 	}
+	
+#ifdef VENDOR_EDIT
+// Liujie.Xie@TECH.Kernel.Sched, 2019/05/22, add for ui first
+	prev->enqueue_time = rq->clock;
+#endif
 
 	if (task_on_rq_queued(prev))
 		update_rq_clock(rq);
@@ -3623,6 +3655,12 @@ static void __sched notrace __schedule(bool preempt)
 		++*switch_count;
 
 		trace_sched_switch(preempt, prev, next);
+#if defined(VENDOR_EDIT) && defined(CONFIG_PROCESS_RECLAIM) && defined(CONFIG_OPPO_SPECIAL_BUILD)
+		/* Kui.Zhang@PSW.BSP.Kernel.Performance, 2019-02-26,
+		 * collect reclaimed_shrinked task schedule record
+		 */
+		collect_reclaimed_task(prev, next);
+#endif
 		rq = context_switch(rq, prev, next); /* unlocks the rq */
 		cpu = cpu_of(rq);
 	} else {
@@ -4246,8 +4284,8 @@ static int __sched_setscheduler(struct task_struct *p,
 	struct rq *rq;
 	int reset_on_fork;
 
-	/* The pi code expects interrupts enabled */
-	BUG_ON(pi && in_interrupt());
+	/* may grab non-irq protected spin_locks */
+	BUG_ON(in_interrupt());
 recheck:
 	/* double check policy once rq lock held */
 	if (policy < 0) {
@@ -4954,6 +4992,10 @@ out_put_task:
 	put_online_cpus();
 	return retval;
 }
+#ifdef VENDOR_EDIT
+//jie.cheng@Swdp.shanghai, 2017/06/02, export kernel symbol
+EXPORT_SYMBOL(sched_setaffinity);
+#endif /* VENDOR_EDIT */
 
 static int get_user_cpu_mask(unsigned long __user *user_mask_ptr, unsigned len,
 			     struct cpumask *new_mask)
@@ -5014,6 +5056,16 @@ long sched_getaffinity(pid_t pid, struct cpumask *mask)
 
 	raw_spin_lock_irqsave(&p->pi_lock, flags);
 	cpumask_and(mask, &p->cpus_allowed, cpu_online_mask);
+#ifdef VENDOR_EDIT
+//cuixiaogang@swdp.shanghai, 2018/2/6, Add for cts test
+	/*
+	 * The userspace tasks are forbidden to run on
+	 * isolated CPUs. So exclude isolated CPUs from
+	 * the getaffinity.
+	 */
+	if (!(p->flags & PF_KTHREAD))
+		cpumask_andnot(mask, mask, cpu_isolated_mask);
+#endif /* VENDOR_EDIT */
 	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 
 out_unlock:
@@ -6486,10 +6538,6 @@ static void set_cpu_rq_start_time(void)
 	rq->age_stamp = sched_clock_cpu(cpu);
 }
 
-#ifdef CONFIG_SCHED_SMT
-atomic_t sched_smt_present = ATOMIC_INIT(0);
-#endif
-
 static int sched_cpu_active(struct notifier_block *nfb,
 				      unsigned long action, void *hcpu)
 {
@@ -6506,23 +6554,11 @@ static int sched_cpu_active(struct notifier_block *nfb,
 		 * set_cpu_online(). But it might not yet have marked itself
 		 * as active, which is essential from here on.
 		 */
-#ifdef CONFIG_SCHED_SMT
-		/*
-		 * When going up, increment the number of cores with SMT present.
-		 */
-		if (cpumask_weight(cpu_smt_mask(cpu)) == 2)
-			atomic_inc(&sched_smt_present);
-#endif
 		set_cpu_active(cpu, true);
 		stop_machine_unpark(cpu);
 		return NOTIFY_OK;
 
 	case CPU_DOWN_FAILED:
-#ifdef CONFIG_SCHED_SMT
-		/* Same as for CPU_ONLINE */
-		if (cpumask_weight(cpu_smt_mask(cpu)) == 2)
-			atomic_inc(&sched_smt_present);
-#endif
 		set_cpu_active(cpu, true);
 		return NOTIFY_OK;
 
@@ -6537,15 +6573,7 @@ static int sched_cpu_inactive(struct notifier_block *nfb,
 	switch (action & ~CPU_TASKS_FROZEN) {
 	case CPU_DOWN_PREPARE:
 		set_cpu_active((long)hcpu, false);
-#ifdef CONFIG_SCHED_SMT
-		/*
-		 * When going down, decrement the number of cores with SMT present.
-		 */
-		if (cpumask_weight(cpu_smt_mask((long)hcpu)) == 2)
-			atomic_dec(&sched_smt_present);
-#endif
 		return NOTIFY_OK;
-
 	default:
 		return NOTIFY_DONE;
 	}
@@ -8525,6 +8553,10 @@ void __init sched_init(void)
 		init_cfs_rq(&rq->cfs);
 		init_rt_rq(&rq->rt);
 		init_dl_rq(&rq->dl);
+#ifdef VENDOR_EDIT
+// Liujie.Xie@TECH.Kernel.Sched, 2019/05/22, add for ui first
+        ux_init_rq_data(rq);
+#endif
 #ifdef CONFIG_FAIR_GROUP_SCHED
 		root_task_group.shares = ROOT_TASK_GROUP_LOAD;
 		INIT_LIST_HEAD(&rq->leaf_cfs_rq_list);
@@ -8865,9 +8897,11 @@ void sched_destroy_group(struct task_group *tg)
 void sched_offline_group(struct task_group *tg)
 {
 	unsigned long flags;
+	int i;
 
 	/* end participation in shares distribution */
-	unregister_fair_sched_group(tg);
+	for_each_possible_cpu(i)
+		unregister_fair_sched_group(tg, i);
 
 	spin_lock_irqsave(&task_group_lock, flags);
 	list_del_rcu(&tg->list);
@@ -9384,6 +9418,10 @@ static int cpu_cgroup_can_attach(struct cgroup_taskset *tset)
 #ifdef CONFIG_RT_GROUP_SCHED
 		if (!sched_rt_can_attach(css_tg(css), task))
 			return -EINVAL;
+#else
+		/* We don't support RT-tasks being in separate groups */
+		if (task->sched_class != &fair_sched_class)
+			return -EINVAL;
 #endif
 		/*
 		 * Serialize against wake_up_new_task() such that if its
@@ -9418,8 +9456,6 @@ static void cpu_cgroup_attach(struct cgroup_taskset *tset)
 static int cpu_shares_write_u64(struct cgroup_subsys_state *css,
 				struct cftype *cftype, u64 shareval)
 {
-	if (shareval > scale_load_down(ULONG_MAX))
-		shareval = MAX_SHARES;
 	return sched_group_set_shares(css_tg(css), scale_load(shareval));
 }
 
@@ -9519,10 +9555,8 @@ int tg_set_cfs_quota(struct task_group *tg, long cfs_quota_us)
 	period = ktime_to_ns(tg->cfs_bandwidth.period);
 	if (cfs_quota_us < 0)
 		quota = RUNTIME_INF;
-	else if ((u64)cfs_quota_us <= U64_MAX / NSEC_PER_USEC)
-		quota = (u64)cfs_quota_us * NSEC_PER_USEC;
 	else
-		return -EINVAL;
+		quota = (u64)cfs_quota_us * NSEC_PER_USEC;
 
 	return tg_set_cfs_bandwidth(tg, period, quota);
 }
@@ -9543,9 +9577,6 @@ long tg_get_cfs_quota(struct task_group *tg)
 int tg_set_cfs_period(struct task_group *tg, long cfs_period_us)
 {
 	u64 quota, period;
-
-	if ((u64)cfs_period_us > U64_MAX / NSEC_PER_USEC)
-		return -EINVAL;
 
 	period = (u64)cfs_period_us * NSEC_PER_USEC;
 	quota = tg->cfs_bandwidth.quota;
@@ -9763,3 +9794,4 @@ void dump_cpu_task(int cpu)
 	pr_info("Task dump for CPU %d:\n", cpu);
 	sched_show_task(cpu_curr(cpu));
 }
+

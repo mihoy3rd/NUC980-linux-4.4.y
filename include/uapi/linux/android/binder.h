@@ -326,7 +326,6 @@ struct binder_transaction_data_secctx {
 };
 
 struct binder_transaction_data_sg {
-
 	struct binder_transaction_data transaction_data;
 	binder_size_t buffers_size;
 };
@@ -527,6 +526,16 @@ enum binder_driver_command_protocol {
 	 * binder_transaction_data_sg: the sent command.
 	 */
 };
+
+#ifdef VENDOR_EDIT
+//zhoumingjun@Swdp.shanghai, 2017/07/10, notify user space when binder transaction starts
+struct process_event_binder {
+    struct task_struct *src;
+    struct task_struct *dst;
+    __u32 code;
+    __u32 flags;
+};
+#endif
 
 #endif /* _UAPI_LINUX_BINDER_H */
 

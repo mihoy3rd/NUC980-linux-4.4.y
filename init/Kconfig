@@ -1132,7 +1132,6 @@ config FAIR_GROUP_SCHED
 config CFS_BANDWIDTH
 	bool "CPU bandwidth provisioning for FAIR_GROUP_SCHED"
 	depends on FAIR_GROUP_SCHED
-	depends on !SCHED_WALT
 	default n
 	help
 	  This option allows users to define CPU bandwidth rates (limits) for
@@ -1773,6 +1772,24 @@ config VM_EVENT_COUNTERS
 	  on EXPERT systems.  /proc/vmstat will only show page counts
 	  if VM event counters are disabled.
 
+#ifdef VENDOR_EDIT
+#Wen.Luo@Bsp.Kernel.Stability, 2018/12/05, Add for aging test, slub debug config
+config OPPO_SLUB_TEST
+	string
+	option env="OPPO_SLUB_TEST"
+
+config OPPO_KASAN_TEST
+	string
+	option env="OPPO_KASAN_TEST"
+
+config OPPO_KMEMLEAK_TEST
+	string
+	option env="OPPO_KMEMLEAK_TEST"
+
+config OPPO_AGING_TEST
+	string
+	option env="OPPO_AGING_TEST"
+#endif
 
 config SLUB_DEBUG
 	#ifdef VENDOR_EDIT
@@ -1791,6 +1808,20 @@ config SLUB_DEBUG
 	  SLUB sysfs support. /sys/slab will not exist and there will be
 	  no support for cache validation etc.
 
+#ifdef VENDOR_EDIT
+# /* Kui.Zhang@PSW.BSP.Kernel.Performance, 2018-11-12, Support slab objects
+#  * statistics whlie not open SLUB_DEBUG
+#  */
+config SLUB_STAT_DEBUG
+	bool "Enable Collect SLUB debug information statisticst" if EXPERT
+	default n
+	depends on !SLUB_DEBUG
+	help
+	  If open SLUB_DEBUG, there are more code and will degradte perforance.
+	  To get more slab details, such as the total objects, this option is
+	  to collect slab info on SLUB_DEBUG is closed.
+
+#endif /* VENDOR_EDIT */
 
 config COMPAT_BRK
 	bool "Disable heap randomization"
@@ -1915,8 +1946,13 @@ config SLABINFO
 	bool
 	depends on PROC_FS
 	depends on !MTK_ENABLE_GMO
+#ifndef VENDOR_EDIT
+# /* Kui.Zhang@PSW.BSP.Kernel.Performance, 2018-11-12, if SLAB_STAT_DEBUG is
+#  * is enabled, /proc/slabinfo is created for getting more slab details.
+#	depends on SLAB || SLUB_DEBUG
+#else
 	depends on SLAB || SLUB_DEBUG || SLUB_STAT_DEBUG
-
+#endif
 	default y
 
 config RT_MUTEXES

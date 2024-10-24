@@ -317,6 +317,25 @@ extern char ___assert_task_state[1 - 2*!!(
 
 #endif
 
+#ifdef VENDOR_EDIT
+// Liujie.Xie@TECH.Kernel.Sched, 2019/05/22, add for ui first
+enum DYNAMIC_UX_TYPE
+{
+    DYNAMIC_UX_BINDER = 0,
+    DYNAMIC_UX_RWSEM,
+    DYNAMIC_UX_MUTEX,
+    DYNAMIC_UX_SEM,
+    DYNAMIC_UX_FUTEX,
+    DYNAMIC_UX_MAX,
+};
+
+#define UX_MSG_LEN 64
+#define UX_DEPTH_MAX 2
+
+extern int sysctl_uifirst_enabled;
+extern int sysctl_launcher_boost_enabled;
+#endif /* VENDOR_EDIT */
+
 /* Task command name length */
 #define TASK_COMM_LEN 16
 
@@ -1663,6 +1682,16 @@ do { \
 #define mt_sched_printf(event, x...) do {} while (0)
 #endif
 
+#if defined(VENDOR_EDIT) && defined(CONFIG_PROCESS_RECLAIM)
+/* Kui.Zhang@TEC.Kernel.Performance, 2019/03/04
+ * Record process reclaim infor
+ */
+union reclaim_limit {
+	unsigned long stop_jiffies;
+	unsigned long stop_scan_addr;
+};
+#endif
+
 /* Track pages that require TLB flushes */
 struct tlbflush_unmap_batch {
 	/*
@@ -2180,6 +2209,29 @@ struct task_struct {
 #ifdef CONFIG_PREEMPT_MONITOR
 	unsigned long preempt_dur;
 #endif
+#if defined(VENDOR_EDIT) && defined(CONFIG_PROCESS_RECLAIM)
+	/* Kui.Zhang@TEC.Kernel.Performance, 2019/03/04
+	 * Record process reclaim infor
+	 */
+	union reclaim_limit reclaim;
+#endif
+#if defined(VENDOR_EDIT) && defined(CONFIG_PROCESS_RECLAIM) && defined(CONFIG_OPPO_SPECIAL_BUILD)
+	/* Kui.Zhang@TEC.Kernel.Performance, 2019/03/05
+	 * record the time used of process reclaim
+	 */
+	unsigned long reclaim_ns;
+	unsigned long reclaim_run_ns;
+	unsigned long reclaim_intr_ns;
+#endif
+#ifdef VENDOR_EDIT
+// Liujie.Xie@TECH.Kernel.Sched, 2019/05/22, add for ui first
+    int static_ux;
+    atomic64_t dynamic_ux;
+    struct list_head ux_entry;
+    int ux_depth;
+    u64 enqueue_time;
+    u64 dynamic_ux_start;
+#endif /* VENDOR_EDIT */
 
 /* CPU-specific state of this task */
 	struct thread_struct thread;
@@ -2215,7 +2267,7 @@ extern enum iso_prio_t iso_prio;
 extern void task_numa_fault(int last_node, int node, int pages, int flags);
 extern pid_t task_numa_group_id(struct task_struct *p);
 extern void set_numabalancing_state(bool enabled);
-extern void task_numa_free(struct task_struct *p, bool final);
+extern void task_numa_free(struct task_struct *p);
 extern bool should_numa_migrate_memory(struct task_struct *p, struct page *page,
 					int src_nid, int dst_cpu);
 #else
@@ -2230,7 +2282,7 @@ static inline pid_t task_numa_group_id(struct task_struct *p)
 static inline void set_numabalancing_state(bool enabled)
 {
 }
-static inline void task_numa_free(struct task_struct *p, bool final)
+static inline void task_numa_free(struct task_struct *p)
 {
 }
 static inline bool should_numa_migrate_memory(struct task_struct *p,
@@ -2460,6 +2512,10 @@ extern void thread_group_cputime_adjusted(struct task_struct *p, cputime_t *ut, 
 /*
  * Per process flags
  */
+#ifdef VENDOR_EDIT
+/* fanhui@PhoneSW.BSP, 2016/02/02, DeathHealer, set the task to be killed */
+#define PF_OPPO_KILLING	0x00000001
+#endif
 #define PF_EXITING	0x00000004	/* getting shut down */
 #define PF_EXITPIDONE	0x00000008	/* pi exit done on shut down */
 #define PF_VCPU		0x00000010	/* I'm a virtual CPU */
@@ -2482,6 +2538,12 @@ extern void thread_group_cputime_adjusted(struct task_struct *p, cputime_t *ut, 
 #define PF_KTHREAD	0x00200000	/* I am a kernel thread */
 #define PF_RANDOMIZE	0x00400000	/* randomize virtual address space */
 #define PF_SWAPWRITE	0x00800000	/* Allowed to write to swap */
+#if defined(VENDOR_EDIT) && defined(CONFIG_PROCESS_RECLAIM)
+/* Kui.Zhang@PSW.BSP.Kernel.Performance, 2018-12-25,
+ * flag that current task is process reclaimer
+ */
+#define PF_RECLAIM_SHRINK 0x01000000
+#endif
 #ifdef CONFIG_MTK_SCHED_VIP_TASKS
 #define PF_VIP_TASK	0x02000000	/* Set vip task */
 #endif
@@ -2490,6 +2552,13 @@ extern void thread_group_cputime_adjusted(struct task_struct *p, cputime_t *ut, 
 #define PF_MUTEX_TESTER	0x20000000	/* Thread belongs to the rt mutex tester */
 #define PF_FREEZER_SKIP	0x40000000	/* Freezer should not count it as freezable */
 #define PF_SUSPEND_TASK 0x80000000      /* this thread called freeze_processes and should not be frozen */
+
+#if defined(VENDOR_EDIT) && defined(CONFIG_PROCESS_RECLAIM)
+/* Kui.Zhang@PSW.BSP.Kernel.Performance, 2018-12-25,
+ * check current task is process reclaimer?
+ */
+#define current_is_reclaimer() (current->flags & PF_RECLAIM_SHRINK)
+#endif
 
 /*
  * Only the _current_ task can read/write to tsk->flags, but other
@@ -2545,8 +2614,6 @@ static inline void memalloc_noio_restore(unsigned int flags)
 #define PFA_LMK_WAITING  3      /* Lowmemorykiller is waiting */
 #define PFA_SPEC_SSB_DISABLE		4	/* Speculative Store Bypass disabled */
 #define PFA_SPEC_SSB_FORCE_DISABLE	5	/* Speculative Store Bypass force disabled*/
-#define PFA_SPEC_IB_DISABLE		6	/* Indirect branch speculation restricted */
-#define PFA_SPEC_IB_FORCE_DISABLE	7	/* Indirect branch speculation permanently restricted */
 
 #define TASK_PFA_TEST(name, func)					\
 	static inline bool task_##func(struct task_struct *p)		\
@@ -2578,13 +2645,6 @@ TASK_PFA_CLEAR(SPEC_SSB_DISABLE, spec_ssb_disable)
 
 TASK_PFA_TEST(SPEC_SSB_FORCE_DISABLE, spec_ssb_force_disable)
 TASK_PFA_SET(SPEC_SSB_FORCE_DISABLE, spec_ssb_force_disable)
-
-TASK_PFA_TEST(SPEC_IB_DISABLE, spec_ib_disable)
-TASK_PFA_SET(SPEC_IB_DISABLE, spec_ib_disable)
-TASK_PFA_CLEAR(SPEC_IB_DISABLE, spec_ib_disable)
-
-TASK_PFA_TEST(SPEC_IB_FORCE_DISABLE, spec_ib_force_disable)
-TASK_PFA_SET(SPEC_IB_FORCE_DISABLE, spec_ib_force_disable)
 
 /*
  * task->jobctl flags
@@ -3000,14 +3060,10 @@ extern struct mm_struct * mm_alloc(void);
 
 /* mmdrop drops the mm and the page tables */
 extern void __mmdrop(struct mm_struct *);
-static inline void mmdrop(struct mm_struct *mm)
+static inline void mmdrop(struct mm_struct * mm)
 {
 	if (unlikely(atomic_dec_and_test(&mm->mm_count)))
 		__mmdrop(mm);
-}
-static inline bool mmget_not_zero(struct mm_struct *mm)
-{
-	return atomic_inc_not_zero(&mm->mm_users);
 }
 
 /* mmput gets rid of the mappings and all user-space */
@@ -3046,6 +3102,9 @@ static inline int copy_thread_tls(
 #endif
 extern void flush_thread(void);
 
+#ifdef VENDOR_EDIT
+#define BINDER_DESCRIPTOR_SIZE	70
+#endif /* VENDOR_EDIT */
 
 #ifdef CONFIG_HAVE_EXIT_THREAD
 extern void exit_thread(struct task_struct *tsk);
@@ -3053,6 +3112,38 @@ extern void exit_thread(struct task_struct *tsk);
 static inline void exit_thread(struct task_struct *tsk)
 {
 }
+#endif
+
+#if defined(VENDOR_EDIT) && defined(CONFIG_ELSA_STUB)
+//zhoumingjun@Swdp.shanghai, 2017/04/19, add process_event_notifier support
+#define PROCESS_EVENT_CREATE 1
+#define PROCESS_EVENT_EXIT 2
+#define PROCESS_EVENT_UID 3
+#define PROCESS_EVENT_SOCKET 4
+#define PROCESS_EVENT_BINDER 5
+#define PROCESS_EVENT_BINDER_NO_WORK 6
+#define PROCESS_EVENT_SIGNAL_FROZEN 7
+
+#define BINDER_DESCRIPTOR_SIZE	70
+struct process_event_data {
+    pid_t pid;
+    kuid_t uid;
+    kuid_t old_uid;
+    long reason;
+    long reason2;
+    __u32 binder_flag;
+    int freeze_binder_count;
+    char buf[BINDER_DESCRIPTOR_SIZE];
+    void *priv;
+};
+extern int process_event_register_notifier(struct notifier_block *nb);
+extern int process_event_unregister_notifier(struct notifier_block *nb);
+extern int process_event_notifier_call_chain(unsigned long action, struct process_event_data *pe_data);
+
+//zhoumingjun@Swdp.shanghai, 2017/07/06, add process_event_notifier_atomic support
+extern int process_event_register_notifier_atomic(struct notifier_block *nb);
+extern int process_event_unregister_notifier_atomic(struct notifier_block *nb);
+extern int process_event_notifier_call_chain_atomic(unsigned long action, struct process_event_data *pe_data);
 #endif
 
 extern void exit_files(struct task_struct *);
@@ -3080,12 +3171,7 @@ static inline void set_task_comm(struct task_struct *tsk, const char *from)
 {
 	__set_task_comm(tsk, from, false);
 }
-
-extern char *__get_task_comm(char *to, size_t len, struct task_struct *tsk);
-#define get_task_comm(buf, tsk) ({			\
-	BUILD_BUG_ON(sizeof(buf) != TASK_COMM_LEN);	\
-	__get_task_comm(buf, sizeof(buf), tsk);		\
-})
+extern char *get_task_comm(char *to, struct task_struct *tsk);
 
 #ifdef CONFIG_SMP
 void scheduler_ipi(void);
@@ -3130,11 +3216,40 @@ extern bool current_is_single_threaded(void);
 #define for_each_process_thread(p, t)	\
 	for_each_process(p) for_each_thread(p, t)
 
+#ifdef VENDOR_EDIT
+#ifdef CONFIG_OPPO_FG_OPT
+/* Huacai.Zhou@PSW.BSP.Kernel.MM, 2018-07-07, add fg process opt*/
+extern bool is_fg(int uid);
+static inline int current_is_fg(void)
+{
+	int cur_uid;
+	cur_uid = current_uid().val;
+	if (is_fg(cur_uid))
+		return 1;
+	return 0;
+}
+
+/* Kui.Zhang@PSW.BSP.Kernel.MM, 2018-12-25, check whether task is fg*/
+static inline int task_is_fg(struct task_struct *task)
+{
+	int task_uid;
+	task_uid = task_uid(task).val;
+	if (is_fg(task_uid))
+		return 1;
+	return 0;
+}
+#else
 static inline int current_is_fg(void)
 {
 	return 0;
 }
 
+static inline int task_is_fg(struct task_struct *task)
+{
+	return 0;
+}
+#endif /*CONFIG_OPPO_FG_OPT*/
+#endif /*VENDOR_EDIT*/
 
 static inline int get_nr_threads(struct task_struct *tsk)
 {
@@ -3395,6 +3510,17 @@ static inline int fatal_signal_pending(struct task_struct *p)
 {
 	return signal_pending(p) && __fatal_signal_pending(p);
 }
+
+//#ifdef VENDOR_EDIT //fangpan@Swdp.shanghai,2015/11/12
+static inline int hung_long_and_fatal_signal_pending(struct task_struct *p)
+{
+#ifdef CONFIG_DETECT_HUNG_TASK
+	return fatal_signal_pending(p) && (p->flags & PF_OPPO_KILLING);
+#else
+	return 0;
+#endif
+}
+//#endif
 
 static inline int signal_pending_state(long state, struct task_struct *p)
 {
@@ -3687,6 +3813,16 @@ static inline unsigned long rlimit_max(unsigned int limit)
 {
 	return task_rlimit_max(current, limit);
 }
+
+#ifdef VENDOR_EDIT
+// Liujie.Xie@TECH.Kernel.Sched, 2019/05/22, add for ui first
+extern bool is_inherit_top_app(struct task_struct *p);
+
+#define INHERIT_DEPTH 2
+extern void set_inherit_top_app(struct task_struct *p,
+					struct task_struct *from);
+extern void restore_inherit_top_app(struct task_struct *p);
+#endif /* VENDOR_EDIT */
 
 #define SCHED_CPUFREQ_RT        (1U << 0)
 #define SCHED_CPUFREQ_DL        (1U << 1)

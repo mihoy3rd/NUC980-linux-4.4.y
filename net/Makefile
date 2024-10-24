@@ -15,7 +15,6 @@ obj-$(CONFIG_NET)		+= $(tmp-y)
 obj-$(CONFIG_LLC)		+= llc/
 obj-$(CONFIG_NET)		+= ethernet/ 802/ sched/ netlink/
 obj-$(CONFIG_NETFILTER)		+= netfilter/
-obj-$(CONFIG_WIREGUARD) += wireguard/
 obj-$(CONFIG_INET)		+= ipv4/
 obj-$(CONFIG_XFRM)		+= xfrm/
 obj-$(CONFIG_UNIX)		+= unix/
@@ -79,3 +78,8 @@ endif
 ifneq ($(CONFIG_NET_L3_MASTER_DEV),)
 obj-y				+= l3mdev/
 endif
+#ifdef VENDOR_EDIT
+#Yuan.Huang@PSW.CN.WiFi.Network.internet.1461349, 2018/06/18,
+#Add for WeChat lucky money recognition
+obj-y				+= oppo_nf_hooks/
+#endif /* VENDOR_EDIT */

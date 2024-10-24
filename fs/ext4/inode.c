@@ -1239,10 +1239,7 @@ errout:
 		if (inode->i_nlink)
 			ext4_orphan_del(NULL, inode);
 	}
-#if defined(VENDOR_EDIT) && defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
-//yh@PSW.BSP.Storage.EXT4, 2018-11-26 add for ext4 async discard suppot
-	ext4_update_time(EXT4_SB(inode->i_sb));
-#endif
+
 	return ret ? ret : copied;
 }
 
@@ -1359,10 +1356,7 @@ errout:
 		if (inode->i_nlink)
 			ext4_orphan_del(NULL, inode);
 	}
-#if defined(VENDOR_EDIT) && defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
-//yh@PSW.BSP.Storage.EXT4, 2018-11-26 add for ext4 async discard suppot
-	ext4_update_time(EXT4_SB(inode->i_sb));
-#endif
+
 	return ret ? ret : copied;
 }
 
@@ -3792,15 +3786,6 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
 
 	trace_ext4_punch_hole(inode, offset, length, 0);
 
-	ext4_clear_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
-	if (ext4_has_inline_data(inode)) {
-		down_write(&EXT4_I(inode)->i_mmap_sem);
-		ret = ext4_convert_inline_data(inode);
-		up_write(&EXT4_I(inode)->i_mmap_sem);
-		if (ret)
-			return ret;
-	}
-
 	/*
 	 * Write out all dirty pages to avoid race conditions
 	 * Then release them.
@@ -4024,10 +4009,6 @@ void ext4_truncate(struct inode *inode)
 
 	if (inode->i_size & (inode->i_sb->s_blocksize - 1))
 		ext4_block_truncate_page(handle, mapping, inode->i_size);
-#if defined(VENDOR_EDIT) && defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
-	//yh@PSW.BSP.Storage.EXT4, 2018-11-26 add for ext4 async discard suppot
-	ext4_update_time(EXT4_SB(inode->i_sb));
-#endif
 
 	/*
 	 * We add the inode to the orphan list, so that if this
@@ -5047,7 +5028,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
 			up_write(&EXT4_I(inode)->i_data_sem);
 			ext4_journal_stop(handle);
 			if (error) {
-				if (orphan && inode->i_nlink)
+				if (orphan)
 					ext4_orphan_del(NULL, inode);
 				goto err_out;
 			}

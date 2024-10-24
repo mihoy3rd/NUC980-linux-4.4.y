@@ -384,7 +384,7 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 
 #ifdef VENDOR_EDIT
 //Cong.Dai@psw.bsp.tp 2018/08/30 modified for stop system enter sleep before low irq handled
-    if (is_project(OPPO_17197) && check_touchirq_triggered()) {
+    if (check_touchirq_triggered()) {
         error = -EBUSY;
         goto Enable_irqs;
     }

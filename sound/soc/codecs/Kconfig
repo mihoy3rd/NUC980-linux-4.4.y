@@ -945,4 +945,8 @@ config SND_SOC_MAX98926
 config SND_SOC_ALSACODEC_TFA9890
 	bool "Use TFA9890 As ALSACODEC"
 	default n
+
+config SND_SOC_AW87339
+	bool "Use AW87339 As PA"
+	default n
 #endif /* VENDOR_EDIT */

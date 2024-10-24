@@ -757,7 +757,12 @@ static int __ftrace_set_clr_event(struct trace_array *tr, const char *match,
 	return ret;
 }
 
+#ifdef VENDOR_EDIT
+//cuixiaogang@Swdp.shanghai, 2017/12/13, export the ftrace interface
+int ftrace_set_clr_event(struct trace_array *tr, char *buf, int set)
+#else
 static int ftrace_set_clr_event(struct trace_array *tr, char *buf, int set)
+#endif /* VENDOR_EDIT */
 {
 	char *event = NULL, *sub = NULL, *match;
 	int ret;
@@ -794,6 +799,10 @@ static int ftrace_set_clr_event(struct trace_array *tr, char *buf, int set)
 
 	return ret;
 }
+#ifdef VENDOR_EDIT
+//cuixiaogang@Swdp.shanghai, 2017/12/13, export the ftrace interface
+EXPORT_SYMBOL(ftrace_set_clr_event);
+#endif /* VENDOR_EDIT */
 
 /**
  * trace_set_clr_event - enable or disable an event
@@ -1296,6 +1305,9 @@ event_id_read(struct file *filp, char __user *ubuf, size_t cnt, loff_t *ppos)
 	int id = (long)event_file_data(filp);
 	char buf[32];
 	int len;
+
+	if (*ppos)
+		return 0;
 
 	if (unlikely(!id))
 		return -ENODEV;

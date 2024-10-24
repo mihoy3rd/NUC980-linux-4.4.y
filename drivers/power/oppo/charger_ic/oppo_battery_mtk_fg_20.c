@@ -54,7 +54,7 @@
 #include <linux/suspend.h>
 
 #include <asm/scatterlist.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 #include <asm/io.h>
 #include <asm/irq.h>
 #include <mach/hardware.h>
