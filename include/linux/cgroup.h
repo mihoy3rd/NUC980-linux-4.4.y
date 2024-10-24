@@ -91,11 +91,6 @@ int cgroup_rm_cftypes(struct cftype *cfts);
 void cgroup_file_notify(struct cgroup_file *cfile);
 
 char *task_cgroup_path(struct task_struct *task, char *buf, size_t buflen);
-#ifdef VENDOR_EDIT
-// zhoumingjun@Swdp.shanghai, 2018/7/10, get task cgroup by rootname for elsa
-// huangliang@Swdp.shanghai, 2018/7/23, porting form kernel 4.9 to 4.4
-char* task_cgroup_path_by_root(struct task_struct *task, const char *rootname, char *buf, size_t buflen);
-#endif
 int cgroupstats_build(struct cgroupstats *stats, struct dentry *dentry);
 int proc_cgroup_show(struct seq_file *m, struct pid_namespace *ns,
 		     struct pid *pid, struct task_struct *tsk);
@@ -458,7 +453,7 @@ static inline struct cgroup_subsys_state *task_css(struct task_struct *task,
  *
  * Find the css for the (@task, @subsys_id) combination, increment a
  * reference on and return it.  This function is guaranteed to return a
- * valid css.
+ * valid css.  The returned css may already have been offlined.
  */
 static inline struct cgroup_subsys_state *
 task_get_css(struct task_struct *task, int subsys_id)
@@ -468,7 +463,13 @@ task_get_css(struct task_struct *task, int subsys_id)
 	rcu_read_lock();
 	while (true) {
 		css = task_css(task, subsys_id);
-		if (likely(css_tryget_online(css)))
+		/*
+		 * Can't use css_tryget_online() here.  A task which has
+		 * PF_EXITING set may stay associated with an offline css.
+		 * If such task calls this function, css_tryget_online()
+		 * will keep failing.
+		 */
+		if (likely(css_tryget(css)))
 			break;
 		cpu_relax();
 	}

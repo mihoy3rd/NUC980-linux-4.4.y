@@ -40,8 +40,7 @@ enum led_brightness {
 enum led_brightness {
 	LED_OFF		= 0,
 };
-#define TEN_BITS (((get_project() == 17197) || (get_project() == 17199) \
-				|| (get_project() == 19531) || (get_project() == 19391)) ? 1 : 0)
+#define TEN_BITS (((get_project() == 17197) || (get_project() == 17199)) ? 1 : 0)
 #define ELEVEN_BITS (((get_project() == 17331) || (get_project() == 17332) \
 				|| (get_project() == 17335) || (get_project() == 17337) \
 				|| ((get_project() >= 17061) && (get_project() <= 17067)) \
@@ -53,8 +52,8 @@ enum led_brightness {
 				|| ((get_project() >= 18561) && (get_project() <= 18569)) \
 				|| ((get_project() >= 18161) && (get_project() <= 18169)) \
 				|| ((get_project() >= 18151) && (get_project() <= 18159)) \
-				|| ((get_project() == 19151) || (get_project() == 19350)) \
-				|| (get_project() == 17339) || (get_project() == 17340)) ? 1 : 0)
+				|| (get_project() == 17339) || (get_project() == 17340)\
+                                || (get_project() == 18611)) ? 1 : 0)
 #define LED_HALF (ELEVEN_BITS ? 1023 : (TEN_BITS ? 511 : 127))
 #define LED_FULL (ELEVEN_BITS ? 2047 : (TEN_BITS ? 1023 : 255))
 #endif /* VENDOR_EDIT */

@@ -38,9 +38,9 @@
 
 &odm {
 //#ifdef VENDOR_EDIT
-/* Yichun.Chen PSW.BSP.CHG  2019-02-20  for 18161 battery model */
-#include "bat_setting/oppo_18161_mt6771_battery_prop_ext.dtsi"
-//#endif
+/* Qiao.Hu@BSP.BaseDrv.CHG.Basic, 2017/12/05, Add for charging dtsi */
+#include "bat_setting/oppo_17197_mt6771_battery_prop_ext.dtsi"
+//endif
 	led0:led@0 {
 		compatible = "mediatek,red";
 		led_mode = <0>;
@@ -162,11 +162,7 @@
 		compatible = "oppo, device_info";
 	};
 //endif
-//#ifdef VENDOR_EDIT
-/* wen.luo@PSW.BSP.kernel, 2019/6/25, Add for parsar powoff/powon */
-	oppo_lastpmic:oppo_lastpmic {
-	};
-//#endif
+
 	//#ifdef VENDOR_EDIT
 	// PengNan@BSP.chg.basic,2017/07/20,add for vooc support
 /*
@@ -192,7 +188,6 @@
 
 		//for oppo chg framework:
 		qcom,input_current_charger_ma = <2000>;
-		qcom,input_current_cdp_ma = <1500>;
 		qcom,input_current_usb_ma = <500>;
 		qcom,input_current_led_ma = <1200>;
 		qcom,input_current_led_ma_forcmcc = <500>;
@@ -273,8 +268,8 @@
 		//qcom,vooc_project = <1>;
 		qcom,vbatt_num = <1>;
 
-		qcom,normal_vterm_hw_inc = <20>;
-		qcom,non_normal_vterm_hw_inc = <20>;
+		qcom,normal_vterm_hw_inc = <150>;
+		qcom,non_normal_vterm_hw_inc = <10>;
 
 		qcom,ff1_normal_fastchg_ma = <1024>;
 		qcom,ffc2_normal_fastchg_ma = <720>;/*16C~35c*/
@@ -303,14 +298,14 @@
 		qcom,temp_little_cool_vfloat_mv_2nd = <4391>;	/* 12C ~ 16C */
 		qcom,temp_normal_vfloat_mv_2nd = <4391>;	/* 16C ~ 45C */
 
-		qcom,little_cold_vfloat_over_sw_limit_2nd = <4401>;
-		qcom,cool_vfloat_over_sw_limit_2nd = <4401>;
-		qcom,little_cool_vfloat_over_sw_limit_2nd = <4401>;
-		qcom,normal_vfloat_over_sw_limit_2nd = <4401>;
+		qcom,little_cold_vfloat_over_sw_limit_2nd = <4395>;
+		qcom,cool_vfloat_over_sw_limit_2nd = <4395>;
+		qcom,little_cool_vfloat_over_sw_limit_2nd = <4395>;
+		qcom,normal_vfloat_over_sw_limit_2nd = <4395>;
 
 		qcom,default_iterm_ma_2nd = <300>;
 		qcom,default_temp_normal_vfloat_mv_2nd = <4391>;
-		qcom,default_normal_vfloat_over_sw_limit_2nd = <4401>;
+		qcom,default_normal_vfloat_over_sw_limit_2nd = <4395>;
 
 		//for control:
 		//qcom,suspend_after_full;
@@ -572,7 +567,6 @@
         fw_update_app_support;
         pressure_report_support;
         freq_hop_simulate_support;
-        noise_modetest_support;
 
         /*
         *Virtual Key Config:
@@ -617,7 +611,7 @@
 
 	tfa98xxresethigh: tfa98xxrsthigh {
 		pins_cmd_dat {
-			pins = <PINMUX_GPIO156__FUNC_GPIO156>;
+			pins = <PINMUX_GPIO153__FUNC_GPIO153>;
 			slew-rate = <1>;
 			output-high;
 		};
@@ -625,7 +619,7 @@
 
 	tfa98xxresetlow: tfa98xxrstlow {
 		pins_cmd_dat {
-			pins = <PINMUX_GPIO156__FUNC_GPIO156>;
+			pins = <PINMUX_GPIO153__FUNC_GPIO153>;
 			slew-rate = <1>;
 			output-low;
 		};
@@ -1758,7 +1752,82 @@
 		};
 	};
 */
+	/* SPI GPIO Settings - Start */
+
+	/* SPI0: cs set, cs clear, clk set, clk clear
+			miso set, miso clear, mosi set, mosi clear*/
+		spi0_gpio_def_cfg:spi0_gpio_default{
+
+	};
+	spi0_cs_set_cfg:spi0_cs_set{
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO86__FUNC_SPI0_CSB>;
+			input-enable;
+		};
+	};
+	spi0_cs_clr_cfg:spi0_cs_clear{
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO86__FUNC_GPIO86>;
+			slew-rate = <0>;
+			input-disable;
+			bias-disable;
+			input-schmitt-enable;
+		};
+	};
+	spi0_clk_set_cfg:spi0_clk_set{
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO88__FUNC_SPI0_CLK>;
+			input-enable;
+		};
+	};
+	spi0_clk_clr_cfg:spi0_clk_clear{
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO88__FUNC_GPIO88>;
+			slew-rate = <0>;
+			input-disable;
+			bias-disable;
+			input-schmitt-enable;
+		};
+	};
+	spi0_miso_set_cfg:spi0_miso_set{
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO85__FUNC_SPI0_MI>;
+			input-enable;
+		};
+	};
+	spi0_miso_clr_cfg:spi0_miso_clear{
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO85__FUNC_GPIO85>;
+			slew-rate = <0>;
+			input-disable;
+			bias-disable;
+			input-schmitt-enable;
+		};
+	};
+	spi0_mosi_set_cfg:spi0_mosi_set{
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO87__FUNC_SPI0_MO>;
+			input-enable;
+		};
+	};
+	spi0_mosi_clr_cfg:spi0_mosi_clear{
+		pins_cmd_dat {
+			pins = <PINMUX_GPIO87__FUNC_GPIO87>;
+			slew-rate = <0>;
+			input-disable;
+			bias-disable;
+			input-schmitt-enable;
+		};
+	};
+	/* SPI GPIO Settings - End */
 };
+
+&fpc_spi{
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi0_cs_set_cfg>,<&spi0_clk_set_cfg>,<&spi0_miso_set_cfg>,<&spi0_mosi_set_cfg>;
+	status = "okay";
+};
+/* SPI END */
 
 /* fpc GPIO standardization */
 &pio {
@@ -1781,105 +1850,22 @@
 		pins_cmd_dat {
 			pins = <PINMUX_GPIO176__FUNC_GPIO176>;
 			slew-rate = <1>;
-                        bias-disable;
-			output-low;
+                        bias-pull-up = <00>;
+			output-high;
 		};
 	};
-        gpio_fpc_cs_func: gpio_fpc_cs_func {
-                pins_cmd_dat {
-                        pins = <PINMUX_GPIO86__FUNC_SPI0_CSB>;
-                        drive-strength = <3>;
-                };
-        };
 };
 
 &fpc_interrupt {
-	pinctrl-names = "default", "fpc_cs_func";
+	pinctrl-names = "default";
 	fpc,irq-gpio    = <&pio 10 0x00>;
 	fpc,reset-gpio  = <&pio 79 0x00>;
 	fpc,vdd-en = <&pio 176 0x00>;
-        fpc,gpio_cs = <&pio 86 0x00>;
 	pinctrl-0 = <&fpc_reset_default>,<&fpc_irq_default>,<&fpc_pwr_default>;
-        pinctrl-1 = <&gpio_fpc_cs_func>;
 	status = "okay";
 };
 
 //ifdef VENDOR_EDIT
-/*Long.Liu@BSP.Fingerprint.Basic, 2019/02/01, add for goodix fingerprint*/
-&pio {
-	goodix_reset_default: goodix_reset_default {
-		pins_cmd_dat {
-			pins = <PINMUX_GPIO79__FUNC_GPIO79>;
-			slew-rate = <1>;
-			output-low;
-		};
-	};
-	goodix_ldo_default: goodix_ldo_default {
-                pins_cmd_dat {
-                        pins = <PINMUX_GPIO176__FUNC_GPIO176>;
-                        slew-rate = <1>;
-                        bias-disable;
-                        output-low;
-                };
-        };
-	goodix_irq_out_low: goodix_irq_out_low {
-		pins_cmd_dat {
-			pins = <PINMUX_GPIO10__FUNC_GPIO10>;
-			slew-rate = <0>;
-			bias-pull-up = <00>;
-                        input-enable;
-		};
-	};
-	goodix_irq_no_pull: goodix_irq_no_pull {
-		pins_cmd_dat {
-			pins = <PINMUX_GPIO10__FUNC_GPIO10>;
-			slew-rate = <0>;
-			bias-disable;
-		};
-	};
-        gpio_goodix_cs_func: gpio_goodix_cs_func {
-                pins_cmd_dat {
-                        pins = <PINMUX_GPIO86__FUNC_SPI0_CSB>;
-                        drive-strength = <3>;
-                };
-        };
-};
-&goodix_fp {
-	pinctrl-names = "goodix_reset_default", "goodix_ldo_default", "goodix_irq_out_low", "goodix_irq_no_pull", "gf_cs_func";
-	pinctrl-0 = <&goodix_reset_default>;
-        pinctrl-1 = <&goodix_ldo_default>;
-	pinctrl-2 = <&goodix_irq_out_low>;
-	pinctrl-3 = <&goodix_irq_no_pull>;
-        pinctrl-4 = <&gpio_goodix_cs_func>;
-	interrupt-parent = <&pio>;
-	interrupts = <10 0>;
-	goodix,gpio_irq = <&pio 10 0x00>;
-	goodix,gpio_reset = <&pio 79 0x00>;
-        goodix,gpio_ldo = <&pio 176 0x00>;
-        goodix,gpio_cs = <&pio 86 0x00>;
-	spi-max-frequency = <8000000>;
-	status = "okay";
-};
-//#endif /* VENDOR_EDIT */
-
-//ifdef VENDOR_EDIT
-/*Long.Liu@BSP.Fingerprint.Basic, 2019/02/01, add for goodix fingerprint*/
-&spi0 {
-    #address-cells = <1>;
-    #size-cells = <0>;
-    status = "okay";
-    oppo_fp: fingerprint@0 {
-        compatible = "oppo,oppo_fp";
-        reg = <0>;
-        spi-max-frequency = <8000000>;
-        spi-id = <0>;
-        spi-irq = <39>;
-        spi-reg = <11010000>;
-        status = "okay";
-    };
-};
-//#endif /* VENDOR_EDIT */
-
 /* Long.Liu@PSW.BSP.Fingerprint.Basic, 2017/11/22, Add for FPC driver baseon trustonic tee */
 /*the id config to project dts.*/
 &pio{

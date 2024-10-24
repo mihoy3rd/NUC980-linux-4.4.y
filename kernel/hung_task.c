@@ -48,7 +48,7 @@ int __read_mostly sysctl_hung_task_check_count = PID_MAX_LIMIT;
  * is disabled during the critical section. It also controls the size of
  * the RCU grace period. So it needs to be upper-bound.
  */
-#define HUNG_TASK_BATCHING 1024
+#define HUNG_TASK_LOCK_BREAK (HZ / 10)
 
 /*
  * Zero means infinite timeout - no checking done:
@@ -110,23 +110,6 @@ static void check_hung_task(struct task_struct *t, unsigned long timeout)
 #endif
 {
 	unsigned long switch_count = t->nvcsw + t->nivcsw;
-
-#if defined(VENDOR_EDIT) && defined(CONFIG_DEATH_HEALER)
-	static unsigned long long last_death_time = 0;
-	unsigned long long cur_death_time = 0;
-	static int death_count = 0;
-#endif /* VENDOR_EDIT */
-
-#ifdef VENDOR_EDIT
-	if(!strncmp(t->comm,"mdss_dsi_event", TASK_COMM_LEN)||
-		!strncmp(t->comm,"msm-core:sampli", TASK_COMM_LEN)||
-		!strncmp(t->comm,"kworker/u16:1", TASK_COMM_LEN) ||
-		!strncmp(t->comm,"mdss_fb0", TASK_COMM_LEN)||
-		!strncmp(t->comm,"panic_flush", TASK_COMM_LEN)||
-		!strncmp(t->comm,"mdss_fb_ffl0", TASK_COMM_LEN)){
-		return;
-	}
-#endif
 
 	/*
 	 * Ensure the task is not frozen.
@@ -293,7 +276,7 @@ unsigned int  iowait_panic_cnt = 0;
 static void check_hung_uninterruptible_tasks(unsigned long timeout)
 {
 	int max_count = sysctl_hung_task_check_count;
-	int batch_count = HUNG_TASK_BATCHING;
+	unsigned long last_break = jiffies;
 	struct task_struct *g, *t;
 #if defined(VENDOR_EDIT) && defined(CONFIG_DEATH_HEALER)
 	unsigned int iowait_count = 0;
@@ -310,10 +293,10 @@ static void check_hung_uninterruptible_tasks(unsigned long timeout)
 	for_each_process_thread(g, t) {
 		if (!max_count--)
 			goto unlock;
-		if (!--batch_count) {
-			batch_count = HUNG_TASK_BATCHING;
+		if (time_after(jiffies, last_break + HUNG_TASK_LOCK_BREAK)) {
 			if (!rcu_lock_break(g, t))
 				goto unlock;
+			last_break = jiffies;
 		}
 		/* use "==" to skip the TASK_KILLABLE tasks waiting on NFS */
 #if defined(VENDOR_EDIT) && defined(CONFIG_DEATH_HEALER)

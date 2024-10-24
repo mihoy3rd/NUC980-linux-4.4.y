@@ -45,6 +45,10 @@ endif
 	$(call move-limit-speed-kernel-module-files,$(KERNEL_OUT),$(KERNEL_MODULES_OUT))
 #endif
 
+#ifdef VENDOR_EDIT /*ChenYong@Plf.Framework, 2018/11/27, add for kernel hotfix*/
+	$(KERNEL_DIR)/tools/toSDK.sh
+#endif /* VENDOR_EDIT */
+
 ifeq ($(strip $(MTK_HEADER_SUPPORT)), yes)
 $(BUILT_KERNEL_TARGET): $(KERNEL_ZIMAGE_OUT) $(TARGET_KERNEL_CONFIG) $(LOCAL_PATH)/Android.mk | $(HOST_OUT_EXECUTABLES)/mkimage$(HOST_EXECUTABLE_SUFFIX)
 	$(hide) $(HOST_OUT_EXECUTABLES)/mkimage$(HOST_EXECUTABLE_SUFFIX) $< KERNEL 0xffffffff > $@

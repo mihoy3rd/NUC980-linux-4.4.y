@@ -71,6 +71,10 @@ static int sig_task_ignored(struct task_struct *t, int sig, bool force)
 
 	handler = sig_handler(t, sig);
 
+	/* SIGKILL and SIGSTOP may not be sent to the global init */
+	if (unlikely(is_global_init(t) && sig_kernel_only(sig)))
+		return true;
+
 	if (unlikely(t->signal->flags & SIGNAL_UNKILLABLE) &&
 	    handler == SIG_DFL && !(force && sig_kernel_only(sig)))
 		return 1;
@@ -696,6 +700,48 @@ static inline bool si_fromuser(const struct siginfo *info)
 		(!is_si_special(info) && SI_FROMUSER(info));
 }
 
+static int dequeue_synchronous_signal(siginfo_t *info)
+{
+	struct task_struct *tsk = current;
+	struct sigpending *pending = &tsk->pending;
+	struct sigqueue *q, *sync = NULL;
+
+	/*
+	 * Might a synchronous signal be in the queue?
+	 */
+	if (!((pending->signal.sig[0] & ~tsk->blocked.sig[0]) & SYNCHRONOUS_MASK))
+		return 0;
+
+	/*
+	 * Return the first synchronous signal in the queue.
+	 */
+	list_for_each_entry(q, &pending->list, list) {
+		/* Synchronous signals have a postive si_code */
+		if ((q->info.si_code > SI_USER) &&
+		    (sigmask(q->info.si_signo) & SYNCHRONOUS_MASK)) {
+			sync = q;
+			goto next;
+		}
+	}
+	return 0;
+next:
+	/*
+	 * Check if there is another siginfo for the same signal.
+	 */
+	list_for_each_entry_continue(q, &pending->list, list) {
+		if (q->info.si_signo == sync->info.si_signo)
+			goto still_pending;
+	}
+
+	sigdelset(&pending->signal, sync->info.si_signo);
+	recalc_sigpending();
+still_pending:
+	list_del_init(&sync->list);
+	copy_siginfo(info, &sync->info);
+	__sigqueue_free(sync);
+	return info->si_signo;
+}
+
 /*
  * called with RCU read lock from check_kill_permission()
  */
@@ -980,55 +1026,7 @@ static inline void userns_fixup_signal_uid(struct siginfo *info, struct task_str
 	return;
 }
 #endif
-#ifdef VENDOR_EDIT
-//Li.Liu@PSW.AD.Stability.Crash.1054829, 2016/10/08, Add for merging fangpan@oppo.com modify for the sender who kill system_server
-static bool is_zygote_process(struct task_struct *t)
-{
-	const struct cred *tcred = __task_cred(t);
 
-	struct task_struct * first_child = NULL;
-	if(t->children.next && t->children.next != (struct list_head*)&t->children.next)
-		first_child = container_of(t->children.next, struct task_struct, sibling);
-	if(!strcmp(t->comm, "main") && (tcred->uid.val == 0) && (t->parent != 0 && !strcmp(t->parent->comm,"init"))  )
-		return true;
-	else
-		return false;
-	return false;
-}
-static bool is_systemserver_process(struct task_struct *t) {
-    if (!strcmp(t->comm, "system_server")) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-static bool is_key_process(struct task_struct *t) {
-    struct pid *pgrp;
-    struct task_struct *taskp;
-
-    if (t->pid == t->tgid) {
-        if (is_systemserver_process(t) || is_zygote_process(t)) {
-            return true;
-        }
-    } else {
-        pgrp = task_pgrp(t);
-        if (pgrp != NULL) {
-            taskp = pid_task(pgrp, PIDTYPE_PID);
-            if (taskp != NULL && (is_systemserver_process(taskp) || is_zygote_process(taskp))) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-#endif
-
-#ifdef VENDOR_EDIT
-/*fanhui@PhoneSW.BSP, 2016-06-21, DeathHealer, record the SIGSTOP sender*/
-extern char last_stopper_comm[];
-#endif
 static int __send_signal(int sig, struct siginfo *info, struct task_struct *t,
 			int group, int from_ancestor_ns)
 {
@@ -1036,23 +1034,10 @@ static int __send_signal(int sig, struct siginfo *info, struct task_struct *t,
 	struct sigqueue *q;
 	int override_rlimit;
 	int ret = 0, result;
-#if defined(VENDOR_EDIT) && defined(CONFIG_ELSA_STUB)
-//zhoumingjun@Swdp.shanghai, 2017/05/18, notify userspace when kill cgroup frozen tasks
-	struct process_event_data pe_data;
-#endif
 
 	assert_spin_locked(&t->sighand->siglock);
 
 	result = TRACE_SIGNAL_IGNORED;
-#ifdef VENDOR_EDIT
-//Li.Liu@PSW.AD.Stability.Crash.1054829, 2016/10/08, Add for merging fangpan@oppo.com modify for the sender who kill system_server
-        if(1) {
-                /*add the SIGKILL print log for some debug*/
-                if((sig == SIGHUP || sig == 33 || sig == SIGKILL || sig == SIGSTOP || sig == SIGABRT || sig == SIGTERM || sig == SIGCONT) && is_key_process(t)) {
-                        printk("Some other process %d:%s want to send sig:%d to pid:%d tgid:%d comm:%s\n", current->pid, current->comm,sig, t->pid, t->tgid, t->comm);
-                }
-        }
-#endif
 
 #if defined(VENDOR_EDIT) && defined(CONFIG_DEATH_HEALER) && !defined(CONFIG_OPPO_SPECIAL_BUILD)
 /*fanhui@PhoneSW.BSP, 2016-06-21, DeathHealer, record the SIGSTOP sender*/
@@ -1061,18 +1046,8 @@ static int __send_signal(int sig, struct siginfo *info, struct task_struct *t,
 		snprintf(last_stopper_comm, 64, "%s[%d]", current->comm, current->pid);
 #endif
 
-#if defined(VENDOR_EDIT) && defined(CONFIG_ELSA_STUB)
-//zhoumingjun@Swdp.shanghai, 2017/05/18, notify userspace when kill cgroup frozen tasks
-	if (sig == SIGKILL && (freezing(t) || frozen(t)) && cgroup_freezing(t)) {
-		pe_data.pid = task_pid_nr(t);
-		pe_data.uid = task_uid(t);
-		pe_data.reason = sig;
-		process_event_notifier_call_chain_atomic(PROCESS_EVENT_SIGNAL_FROZEN, &pe_data);
-	}
-#endif
-
 	if (!prepare_signal(sig, t,
-			from_ancestor_ns || (info == SEND_SIG_FORCED)))
+			from_ancestor_ns || (info == SEND_SIG_PRIV) || (info == SEND_SIG_FORCED)))
 		goto ret;
 
 	pending = group ? &t->signal->shared_pending : &t->pending;
@@ -1338,10 +1313,6 @@ struct sighand_struct *__lock_task_sighand(struct task_struct *tsk,
 
 	return sighand;
 }
-#ifdef VENDOR_EDIT
-//jie.cheng@Swdp.shanghai, 2017/06/02, export kernel symbol
-EXPORT_SYMBOL(__lock_task_sighand);
-#endif
 
 /*
  * send signal info to all the members of a group
@@ -2283,6 +2254,16 @@ relock:
 		goto relock;
 	}
 
+	/* Has this task already been marked for death? */
+	if (signal_group_exit(signal)) {
+		ksig->info.si_signo = signr = SIGKILL;
+		sigdelset(&current->pending.signal, SIGKILL);
+		trace_signal_deliver(SIGKILL, SEND_SIG_NOINFO,
+				&sighand->action[SIGKILL - 1]);
+		recalc_sigpending();
+		goto fatal;
+	}
+
 	for (;;) {
 		struct k_sigaction *ka;
 
@@ -2296,7 +2277,15 @@ relock:
 			goto relock;
 		}
 
-		signr = dequeue_signal(current, &current->blocked, &ksig->info);
+		/*
+		 * Signals generated by the execution of an instruction
+		 * need to be delivered before any other pending signals
+		 * so that the instruction pointer in the signal stack
+		 * frame points to the faulting instruction.
+		 */
+		signr = dequeue_synchronous_signal(&ksig->info);
+		if (!signr)
+			signr = dequeue_signal(current, &current->blocked, &ksig->info);
 
 		if (!signr)
 			break; /* will return 0 */
@@ -2378,6 +2367,7 @@ relock:
 			continue;
 		}
 
+	fatal:
 		spin_unlock_irq(&sighand->siglock);
 
 		/*

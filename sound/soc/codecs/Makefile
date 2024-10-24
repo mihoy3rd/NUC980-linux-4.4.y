@@ -406,8 +406,6 @@ endif
 
 #ifdef VENDOR_EDIT
 # Xiaojun.Lv@PSW.MM.AudioDriver.Machine, 2018/7/13, add TFA9890 ALSA driver
-obj-$(CONFIG_SND_SOC_ALSACODEC_TFA9890) += tfa98xx/
 obj-$(CONFIG_SND_SOC_ALSACODEC_TFA9890) += tfa98xx-v6/
-# Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/09/24, add for aw87339
-obj-$(CONFIG_SND_SOC_AW87339) += aw87339/
+obj-$(CONFIG_SND_SOC_ALSACODEC_TFA9890) += tfa98xx/
 #endif /* VENDOR_EDIT */

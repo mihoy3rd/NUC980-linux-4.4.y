@@ -358,12 +358,6 @@ struct file *sock_alloc_file(struct socket *sock, int flags, const char *dname)
 	struct qstr name = { .name = "" };
 	struct path path;
 	struct file *file;
-#ifdef VENDOR_EDIT
-//Runsheng.Pei@PSW.Android.OppoFeature.TrafficMonitor, 2015/08/01, add for net comsuption statistics for
-//process which use the same uid.
-	struct pid *pid;
-	struct task_struct *task;
-#endif /* VENDOR_EDIT */
 
 	if (dname) {
 		name.name = dname;
@@ -391,20 +385,6 @@ struct file *sock_alloc_file(struct socket *sock, int flags, const char *dname)
 	sock->file = file;
 	file->f_flags = O_RDWR | (flags & O_NONBLOCK);
 	file->private_data = sock;
-#ifdef VENDOR_EDIT
-//Jiemin.Zhu@PSW.Android.OppoFeature.TrafficMonitor, 2016/10/28,
-//add for count TCP_TIME_WAIT state to corresponding process
-	pid = find_get_pid(current->tgid);
-	if (pid) {
-		task = get_pid_task(pid, PIDTYPE_PID);
-		if (task && sock->sk) {
-			sock->sk->skc_uid = from_kuid(&init_user_ns, sock->file->f_cred->fsuid);
-			strncpy(sock->sk->sk_cmdline, task->comm, TASK_COMM_LEN);
-		}
-		put_task_struct(task);
-	}
-	put_pid(pid);
-#endif /* VENDOR_EDIT */
 	return file;
 }
 EXPORT_SYMBOL(sock_alloc_file);
@@ -490,27 +470,15 @@ static struct socket *sockfd_lookup_light(int fd, int *err, int *fput_needed)
 static ssize_t sockfs_getxattr(struct dentry *dentry,
 			       const char *name, void *value, size_t size)
 {
-	const char *proto_name;
-	size_t proto_size;
-	int error;
-
-	error = -ENODATA;
-	if (!strncmp(name, XATTR_NAME_SOCKPROTONAME, XATTR_NAME_SOCKPROTONAME_LEN)) {
-		proto_name = dentry->d_name.name;
-		proto_size = strlen(proto_name);
-
+	if (!strcmp(name, XATTR_NAME_SOCKPROTONAME)) {
 		if (value) {
-			error = -ERANGE;
-			if (proto_size + 1 > size)
-				goto out;
-
-			strncpy(value, proto_name, proto_size + 1);
+			if (dentry->d_name.len + 1 > size)
+				return -ERANGE;
+			memcpy(value, dentry->d_name.name, dentry->d_name.len + 1);
 		}
-		error = proto_size + 1;
+		return dentry->d_name.len + 1;
 	}
-
-out:
-	return error;
+	return -EOPNOTSUPP;
 }
 
 static ssize_t sockfs_listxattr(struct dentry *dentry, char *buffer,
@@ -548,10 +516,7 @@ static int sockfs_setattr(struct dentry *dentry, struct iattr *iattr)
 	if (!err && (iattr->ia_valid & ATTR_UID)) {
 		struct socket *sock = SOCKET_I(d_inode(dentry));
 
-		if (sock->sk)
-			sock->sk->sk_uid = iattr->ia_uid;
-		else
-			err = -ENOENT;
+		sock->sk->sk_uid = iattr->ia_uid;
 	}
 
 	return err;
@@ -602,15 +567,12 @@ static struct socket *sock_alloc(void)
  *	an inode not a file.
  */
 
-static void __sock_release(struct socket *sock, struct inode *inode)
+void sock_release(struct socket *sock)
 {
 	if (sock->ops) {
 		struct module *owner = sock->ops->owner;
-		if (inode)
-			inode_lock(inode);
+
 		sock->ops->release(sock);
-		if (inode)
-			inode_unlock(inode);
 		sock->ops = NULL;
 		module_put(owner);
 	}
@@ -624,11 +586,6 @@ static void __sock_release(struct socket *sock, struct inode *inode)
 		return;
 	}
 	sock->file = NULL;
-}
-
-void sock_release(struct socket *sock)
-{
-	__sock_release(sock, NULL);
 }
 EXPORT_SYMBOL(sock_release);
 
@@ -1068,7 +1025,6 @@ static int sock_close(struct inode *inode, struct file *filp)
 {
 #ifdef CONFIG_MTK_NET_LOGGING
 	struct socket *sock = SOCKET_I(inode);
-    
 
 	if (sock && sock->sk) {
 		pr_info_ratelimited("[mtk_net][socekt]socket_close[%lu] refcnt: %d\n",
@@ -1077,7 +1033,7 @@ static int sock_close(struct inode *inode, struct file *filp)
 		pr_info_ratelimited("[mtk_net][socekt]socket_close[%lu]\n", inode->i_ino);
 	}
 #endif
-    __sock_release(SOCKET_I(inode), inode);
+	sock_release(SOCKET_I(inode));
 	return 0;
 }
 
@@ -2039,7 +1995,6 @@ out_freectl:
 	if (ctl_buf != ctl) 
 		sock_kfree_s(sock->sk, ctl_buf, ctl_len);
 
-
 out_freeiov:
 	kfree(iov);
 	return err;
@@ -2839,9 +2794,14 @@ static int ethtool_ioctl(struct net *net, struct compat_ifreq __user *ifr32)
 		    copy_in_user(&rxnfc->fs.ring_cookie,
 				 &compat_rxnfc->fs.ring_cookie,
 				 (void __user *)(&rxnfc->fs.location + 1) -
-				 (void __user *)&rxnfc->fs.ring_cookie) ||
-		    copy_in_user(&rxnfc->rule_cnt, &compat_rxnfc->rule_cnt,
-				 sizeof(rxnfc->rule_cnt)))
+				 (void __user *)&rxnfc->fs.ring_cookie))
+			return -EFAULT;
+		if (ethcmd == ETHTOOL_GRXCLSRLALL) {
+			if (put_user(rule_cnt, &rxnfc->rule_cnt))
+				return -EFAULT;
+		} else if (copy_in_user(&rxnfc->rule_cnt,
+					&compat_rxnfc->rule_cnt,
+					sizeof(rxnfc->rule_cnt)))
 			return -EFAULT;
 	}
 

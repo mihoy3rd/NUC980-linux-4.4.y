@@ -98,10 +98,6 @@
 #include <linux/debugfs.h>
 #include "mtk-soc-codec-63xx.h"
 #include "mtk-soc-speaker-amp.h"
-#ifdef CONFIG_SIA_PA_ALGO
-/* Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/09/27, add for SIA PA ALGO */
-#include "../sia81xx/sia81xx_aux_dev_if.h"
-#endif /* CONFIG_SIA_PA_ALGO */
 
 #include "mtk-hw-component.h"
 #if defined(CONFIG_SND_SOC_CS43130)
@@ -906,14 +902,6 @@ static int mt_soc_snd_init(struct platform_device *pdev)
 	card->dev = &pdev->dev;
 	platform_set_drvdata(pdev, card);
 
-#ifdef CONFIG_SIA_PA_ALGO
-	/* Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/09/27, add for SIA PA ALGO */
-	ret = soc_aux_init_only_sia81xx(pdev, card);
-	if (ret)
-		dev_err(&pdev->dev, "%s soc_aux_init_only_sia8108 fail %d\n",
-			__func__, ret);
-#endif /* CONFIG_SIA_PA_ALGO */
-
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret)
 		dev_err(&pdev->dev, "%s snd_soc_register_card fail %d\n",
@@ -939,6 +927,7 @@ static int mt_soc_snd_init(struct platform_device *pdev)
 	}
 #endif /* CONFIG_OPPO_KTV_DEV */
 #endif /* VENDOR_EDIT */
+
 	return ret;
 }
 
