@@ -55,6 +55,7 @@
 #define MT_SMC_FC_APPS              SMC_FASTCALL_NR(SMC_ENTITY_MT_SOS, 0xFF04)
 #define MT_SMC_FC_MEM_USAGE         SMC_FASTCALL_NR(SMC_ENTITY_MT_SOS, 0xFF05)
 #define MT_SMC_SC_SET_RAMCONSOLE    SMC_STDCALL_NR(SMC_ENTITY_MT_SOS, 0xFF80)
+#define MT_SMC_SC_VPU               SMC_STDCALL_NR(SMC_ENTITY_MT_SOS, 0xFF81)
 
 /****************************************************/
 /********** REMAPPED SMC CALLS **********************/

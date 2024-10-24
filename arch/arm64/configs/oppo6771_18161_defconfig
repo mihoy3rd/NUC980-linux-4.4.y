@@ -7,6 +7,12 @@ CONFIG_CGROUP_DEBUG=y
 CONFIG_CPUSETS=y
 CONFIG_CGROUP_SCHEDTUNE=y
 CONFIG_SCHED_TUNE=y
+#ifdef VENDOR_EDIT
+#Xuefeng.Peng@PSW.AD.Storage.1596362, 2018/12/07, Add for FBE HIE feature open
+CONFIG_HIE=y
+CONFIG_HIE_DEBUG=y
+CONFIG_FS_ENCRYPTION=y
+#endif/*VENDOR_EDIT*/
 # CONFIG_RD_BZIP2 is not set
 # CONFIG_RD_LZMA is not set
 # CONFIG_RD_XZ is not set
@@ -25,6 +31,11 @@ CONFIG_SYSCTL_SYSCALL=y
 #CONFIG_DEBUG_KMEMLEAK_DEFAULT_OFF=y
 #endif
 CONFIG_CC_STACKPROTECTOR_STRONG=y
+#ifdef VENDOR_EDIT
+CONFIG_MODULE_FORCE_LOAD=y
+CONFIG_MODULE_FORCE_UNLOAD=y
+CONFIG_MODVERSIONS=y
+#endif
 CONFIG_MODULE_SRCVERSION_ALL=y
 # CONFIG_BLK_DEV_BSG is not set
 CONFIG_MACH_MT6771=y
@@ -138,7 +149,7 @@ CONFIG_MT6370_PMU_LDO=y
 CONFIG_MT6370_PMU_DSV=y
 # CONFIG_MTK_PMIC is not set
 CONFIG_MTK_THERMAL_PA_VIA_ATCMD=y
-CONFIG_CUSTOM_KERNEL_IMGSENSOR="imx519_mipi_raw s5k5e9_mipi_raw imx476_mipi_raw s5k3p9sp_mipi_raw s5kgm1sp_mipi_raw gc5035_mipi_raw imx398_mipi_raw gc2375h_mipi_raw"
+CONFIG_CUSTOM_KERNEL_IMGSENSOR="s5k3p9sp_mipi_raw s5kgm1sp_mipi_raw imx398_mipi_raw gc2375h_mipi_raw gc5035_mipi_raw"
 CONFIG_CUSTOM_KERNEL_CAM_CAL_DRV="BRCB032GWZ_3 GT24c32a cat24c16"
 CONFIG_MTK_CAMERA_ISP_RSC_SUPPORT=y
 CONFIG_MTK_CAMERA_ISP_DPE_SUPPORT=y
@@ -168,16 +179,16 @@ CONFIG_MTK_GPU_VERSION="mali bifrost r14p0"
 CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT=y
 CONFIG_MTK_IMGSENSOR=y
 CONFIG_SPECIFY_IMGSENSOR=y
-CONFIG_IMGSENSOR_MAIN="imx519_mipi_raw s5kgm1sp_mipi_raw imx398_mipi_raw"
-CONFIG_IMGSENSOR_MAIN2="s5k5e9_mipi_raw gc5035_mipi_raw gc2375h_mipi_raw"
-CONFIG_IMGSENSOR_SUB="imx476_mipi_raw s5k3p9sp_mipi_raw"
+CONFIG_IMGSENSOR_MAIN="s5kgm1sp_mipi_raw imx398_mipi_raw"
+CONFIG_IMGSENSOR_MAIN2="gc2375h_mipi_raw gc5035_mipi_raw"
+CONFIG_IMGSENSOR_SUB="s5k3p9sp_mipi_raw"
 CONFIG_MTK_JPEG=y
 CONFIG_MTK_LCM=y
 #ifndef VENDOR_EDIT
 # /* LiPing-m@PSW.MM.Display.LCD.Machine, 2017/11/03, Add for porting 17331 lcd driver */
 #CONFIG_CUSTOM_KERNEL_LCM="nt35695_fhd_dsi_vdo_truly_rt5081 nt35695B_fhd_dsi_vdo_auo_rt5081"
 #else
-CONFIG_CUSTOM_KERNEL_LCM="oppo_samsung_ams628nw_1080p_dsi_cmd oppo_samsung_ams628nw_lsi_1080p_dsi_cmd oppo18311_dsjm_himax83112a_1080p_dsi_vdo oppo18311_truly_td4320_1080p_dsi_vdo oppo18531_dpt_jdi_himax83112a_2_1080p_dsi_vdo oppo18531_tm_himax83112a_2_1080p_dsi_vdo oppo18531_dsjm_jdi_td4330_1080p_dsi_cmd oppo18531_dpt_jdi_td4330_1080p_dsi_cmd oppo18531_tm_nt36670a_1080p_dsi_cmd oppo18531_dsjm_jdi_himax83112b_1080p_dsi_cmd oppo18531_tianma_td4330_1080p_dsi_cmd oppo18561_djn_jdi_himax83112b_1080p_dsi_cmd"
+CONFIG_CUSTOM_KERNEL_LCM="oppo_samsung_ams628nw_1080p_dsi_cmd oppo_samsung_ams628nw_lsi_1080p_dsi_cmd oppo18311_dsjm_himax83112a_1080p_dsi_vdo oppo18311_truly_td4320_1080p_dsi_vdo oppo18531_dpt_jdi_himax83112a_2_1080p_dsi_vdo oppo18531_tm_himax83112a_2_1080p_dsi_vdo oppo18531_dsjm_jdi_td4330_1080p_dsi_cmd oppo18531_dpt_jdi_td4330_1080p_dsi_cmd oppo18531_tm_nt36670a_1080p_dsi_cmd oppo18531_dsjm_jdi_himax83112b_1080p_dsi_cmd oppo18531_tianma_td4330_1080p_dsi_cmd oppo18561_djn_jdi_himax83112b_1080p_dsi_cmd oppo18561_tianma_td4330_1080p_dsi_cmd oppo18561_dsjm_jdi_td4330_1080p_dsi_cmd oppo18561_dpt_jdi_td4330_1080p_dsi_cmd oppo18561_dsjm_jdi_himax83112a_1080p_dsi_vdo oppo18561_tianma_himax83112a_1080p_dsi_vdo"
 CONFIG_LCM_HEIGHT="2340"
 CONFIG_LCM_WIDTH="1080"
 CONFIG_MTK_ROUND_CORNER_SUPPORT=y
@@ -267,7 +278,6 @@ CONFIG_MTK_ECCCI_C2K=y
 CONFIG_MTK_ACCDET=y
 CONFIG_ACCDET_EINT_IRQ=y
 CONFIG_ACCDET_SUPPORT_EINT0=y
-CONFIG_MT6771_QUERY_PCB_ID=y
 CONFIG_MTK_DEBUG_LATCH=y
 CONFIG_MTK_DEVAPC_DRIVER=y
 CONFIG_MTK_DRAMC=y
@@ -350,7 +360,9 @@ CONFIG_ANDROID_DEFAULT_SETTING=y
 CONFIG_SCSI=y
 CONFIG_BLK_DEV_SD=y
 CONFIG_SCSI_SCAN_ASYNC=y
-# CONFIG_SCSI_LOWLEVEL is not set
+CONFIG_SCSI_UFSHCD=y
+CONFIG_SCSI_UFSHCD_PLATFORM=y
+CONFIG_MTK_UFS_SUPPORT=y
 CONFIG_MD=y
 CONFIG_BLK_DEV_DM=y
 CONFIG_DM_CRYPT=y
@@ -609,6 +621,12 @@ CONFIG_SECTION_MISMATCH_WARN_ONLY=y
 CONFIG_OPPO_ARCH_FILE=y
 CONFIG_OPPO_DEVICE_IFNO=y
 CONFIG_OPPO_COMMON_SOFT=y
+
+#ifdef VENDOR_EDIT
+#/* Yichun.Chen  PSW.BSP.CHG  2019-05-14  for soc node */
+CONFIG_OPPO_CHIP_SOC_NODE=y
+#endif
+
 #endif /* VENDOR_EDIT */
 #/* ChaoYing.Chen@EXP.BSP.CHG.basic, 2017/05/16, Add for charge driver */
 CONFIG_OPPO_CHARGER_MTK6771=y
@@ -684,3 +702,8 @@ CONFIG_OPPO_FG_OPT=y
 CONFIG_OPPO_HEALTHINFO=y
 CONFIG_SLUB_STAT_DEBUG=y
 #endif /*VENDOR_EDIT*/
+
+#ifdef VENDOR_EDIT
+# Kui.Zhang@PSW.BSP.Kernel.Performance, 2018-11-07, add process reclaim.
+CONFIG_PROCESS_RECLAIM=y
+#endif

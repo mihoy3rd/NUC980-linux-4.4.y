@@ -560,7 +560,6 @@ config DEBUG_KMEMLEAK_EARLY_LOG_SIZE
 	range 200 40000
 	#default 400
 	#endif
-	default 16000
 	help
 	  Kmemleak must track all the memory allocations to avoid
 	  reporting false positives. Since memory may be allocated or
@@ -895,6 +894,15 @@ config BOOTPARAM_HUNG_TASK_PANIC_VALUE
 	default 0 if !BOOTPARAM_HUNG_TASK_PANIC
 	default 1 if BOOTPARAM_HUNG_TASK_PANIC
 
+#ifdef VENDOR_EDIT
+#Wen.Luo@Bsp.Kernel.Stability, 2018/12/05, Add for aging test,
+#OPPO_SPECIAL_BUILD disable DEATHHEALER to Keep scene, Release load enable DEATHHEALER
+config DEATH_HEALER
+	bool "Enable DeathHealer"
+	depends on DETECT_HUNG_TASK
+	default n if OPPO_AGING_TEST = "true"
+	default y if !OPPO_AGING_TEST
+#endif
 endmenu # "Debug lockups and hangs"
 
 config PANIC_ON_OOPS
@@ -1798,16 +1806,6 @@ config TEST_RHASHTABLE
 
 	  If unsure, say N.
 
-config TEST_HASH
-	tristate "Perform selftest on hash functions"
-	default n
-	help
-	  Enable this option to test the kernel's siphash (<linux/siphash.h>)
-	  hash functions on boot (or module load).
-
-	  This is intended to help people writing architecture-specific
-	  optimized versions.  If unsure, say N.
-
 endmenu # runtime tests
 
 config PROVIDE_OHCI1394_DMA_INIT
@@ -1950,16 +1948,6 @@ config TEST_STATIC_KEYS
 	  Test the static key interfaces.
 
 	  If unsure, say N.
-
-config CC_WERROR
-	bool "Treat all compile warnings as errors"
-	default n
-	help
-	 Select this option to set compiler warnings as errors,
-	 to prevent easily-fixable problems from creeping into
-	 the codebase.
-
-	 If unsure, say N.
 
 source "samples/Kconfig"
 

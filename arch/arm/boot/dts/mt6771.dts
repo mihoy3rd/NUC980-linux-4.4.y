@@ -1728,6 +1728,7 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 			   <GIC_SPI 291 IRQ_TYPE_LEVEL_LOW>;	/*WDT_EINT */
 		clocks = <&scpsys SCP_SYS_CONN>;
 		clock-names = "conn";
+		wifi_ant_swap_gpio = <&pio 153 0x0>;
 	};
 
 	irtx@1100d000 {

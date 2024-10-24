@@ -29,7 +29,12 @@ int sysctl_tcp_keepalive_probes __read_mostly = TCP_KEEPALIVE_PROBES;
 int sysctl_tcp_keepalive_intvl __read_mostly = TCP_KEEPALIVE_INTVL;
 int sysctl_tcp_retries1 __read_mostly = TCP_RETR1;
 int sysctl_tcp_retries2 __read_mostly = TCP_RETR2;
+#ifndef VENDOR_EDIT
+//Yongyao.Song@PSW.NW.DATA.1127822, modify for decrease power
 int sysctl_tcp_orphan_retries __read_mostly;
+#else
+int sysctl_tcp_orphan_retries __read_mostly = TCP_ORPHAN_RETRIES;
+#endif /*VENDOR_EDIT*/
 int sysctl_tcp_thin_linear_timeouts __read_mostly;
 u32 sysctl_tcp_rto_min __read_mostly = TCP_RTO_MIN;
 EXPORT_SYMBOL(sysctl_tcp_rto_min);
@@ -144,7 +149,6 @@ static void tcp_mtu_probing(struct inet_connection_sock *icsk, struct sock *sk)
 			mss = tcp_mtu_to_mss(sk, icsk->icsk_mtup.search_low) >> 1;
 			mss = min(net->ipv4.sysctl_tcp_base_mss, mss);
 			mss = max(mss, 68 - tp->tcp_header_len);
-			mss = max(mss, net->ipv4.sysctl_tcp_min_snd_mss);
 			icsk->icsk_mtup.search_low = tcp_mss_to_mtu(sk, mss);
 			tcp_sync_mss(sk, icsk->icsk_pmtu_cookie);
 		}

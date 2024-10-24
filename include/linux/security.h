@@ -1640,5 +1640,7 @@ static inline void free_secdata(void *secdata)
 extern int sec_trace_root(const struct cred *old, const struct cred *new);
 #endif /* CONFIG_MTK_ROOT_TRACE */
 
+
+
 #endif /* ! __LINUX_SECURITY_H */
 

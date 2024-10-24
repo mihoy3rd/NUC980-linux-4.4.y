@@ -922,8 +922,9 @@ static int rndis_reset_response(struct rndis_params *params, rndis_reset_msg_typ
 {
 	rndis_reset_cmplt_type *resp;
 	rndis_resp_t *r;
-	u8 *xbuf;
+
 	u32 length;
+	u8 *xbuf;
 
 	RNDIS_DBG("reset, clean old response\n");
 	/* drain the response queue */

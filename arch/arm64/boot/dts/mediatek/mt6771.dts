@@ -1586,6 +1586,7 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		clocks = <&infracfg_ao INFRACFG_AO_AP_DMA_CG>;
 		clock-names = "apdma";
 		#dma-cells = <1>;
+		dma-bits = <34>;
 	};
 
 	apuart0: serial@11002000 {
@@ -1742,6 +1743,7 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 			   <GIC_SPI 291 IRQ_TYPE_LEVEL_LOW>;	/*WDT_EINT */
 		clocks = <&scpsys SCP_SYS_CONN>;
 		clock-names = "conn";
+		wifi_ant_swap_gpio = <&pio 153 0x0>;
 	};
 
 	irtx@1100d000 {
@@ -1796,10 +1798,35 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		interrupts = <GIC_SPI 288 IRQ_TYPE_LEVEL_LOW>;
 	};
 
+//#ifdef VENDOR_EDIT
+//Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/09/27, add for SIA PA ALGO
+	sia81xx_L: sia81xx@L {
+		compatible = "si,sia81xx";
+		si,sia81xx_type = "sia8108";
+		si,sia81xx_disable_pin = <1>;
+
+		/* the same value share a same task
+		 * valid value range : 0 ~ 7 */
+		timer_task_hdl = <0>;
+
+		channel_num = <0>;
+		owi_mode = <10>;
+		en_x_filter = <1>;
+		en_dynamic_updata_vdd = <0>;
+		dynamic_updata_vdd_port = <0x2>;
+   };
+//#endif
+
 	audio: audio@11220000 {
 		compatible = "mediatek,audio", "syscon";
 		reg = <0 0x11220000 0 0x1000>;
 		#clock-cells = <1>;
+//#ifdef VENDOR_EDIT
+//Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/09/27, add for SIA PA ALGO
+		si,sia81xx-max-num = <1>;
+		si,sia81xx-aux-devs = <&sia81xx_L>;
+		si,sia81xx-aux-devs-prefix = "SpkrLeft";
+//#endif
 	};
 
 	audgpio: mt_soc_dl1_pcm@11220000 {
@@ -3946,12 +3973,7 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 					compatible = "android,system";
 					dev = "/dev/block/platform/bootdevice/by-name/system";
 					type = "ext4";
-//#if defined(VENDOR_EDIT) && defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
-//yh@PSW.BSP.Storage.EXT4, 2018-11-26 add for ext4 async discard suppot
-					mnt_flags = "ro,async_discard";
-//#else
-					//*mnt_flags = "ro";
-//#endif
+					mnt_flags = "ro";
 					#ifndef CONFIG_MTK_DM_VERITY_OFF
 					fsmgr_flags = "wait,verify";
 					#else
@@ -3964,12 +3986,7 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 					compatible = "android,vendor";
 					dev = "/dev/block/platform/bootdevice/by-name/vendor";
 					type = "ext4";
-//#if defined(VENDOR_EDIT) && defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
-//yh@PSW.BSP.Storage.EXT4, 2018-11-26 add for ext4 async discard suppot
-					mnt_flags = "ro,async_discard";
-//#else
-					//*mnt_flags = "ro";
-//#endif
+					mnt_flags = "ro";
 #ifndef CONFIG_MTK_AB_OTA_UPDATER
 					#ifndef CONFIG_MTK_DM_VERITY_OFF
 					fsmgr_flags = "wait,verify";
@@ -3990,12 +4007,7 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 					compatible = "android,odm";
 					dev = "/dev/block/platform/bootdevice/by-name/odm";
 					type = "ext4";
-//#if defined(VENDOR_EDIT) && defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
-//yh@PSW.BSP.Storage.EXT4, 2018-11-26 add for ext4 async discard suppot
-					mnt_flags = "ro,async_discard";
-//#else
-					//*mnt_flags = "ro";
-//#endif
+					mnt_flags = "ro";
 #ifndef CONFIG_MTK_AB_OTA_UPDATER
 					fsmgr_flags = "wait";
 #else
@@ -4174,22 +4186,43 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 //Anhui.Sun@PSW.NW.RF, 2018/12/19, Add for SWTP - RF cable detection
 	swtp: swtp {
 	};
+	swtp_1: swtp_1 {
+	};
 //#endif  /*VENDOR_EDIT*/
 
-//#ifdef VENDOR_EDIT
-/******************************** Qingwen.Liu@RM.BSP.Fingerprint.Basic 2019/1/26 add for fpc fingerprint driver start ********************************/
+	//#ifdef VENDOR_EDIT
+	/*Ran.Chen@EXP.BSP.Fingerprint.Basic, 2017/05/23, add for goodix fingerprint*/
+	goodix_fp: goodix_fp {
+		compatible = "goodix,goodix-fp";
+		status = "okay";
+	};
+	//#endif /* VENDOR_EDIT */
+
+	//#ifdef VENDOR_EDIT
+	/*Qijia.Zhou@PSW.BSP.Fingerprint.Basic, 2019/06/21, add for goodix optical fingerprint*/
+	goodix_optical_fp: goodix_optical_fp {
+		compatible = "goodix,goodix_fp";
+		status = "okay";
+	};
+	//#endif /* VENDOR_EDIT */
+
+	//#ifdef VENDOR_EDIT
+	/* Bin.Li@PSW.BSP.Fingerprint.Basic, 2017/11/22, Add for FPC driver baseon trustonic tee */
+	fpc1145: fpc1145 {
+		compatible = "mediatek,fpc1145-eint";
+	};
 	fpc_interrupt:fpc_interrupt {
+		status        = "ok";
 		compatible    = "fpc,fpc_irq";
+		//input-device-name = "fpc_irq";
 	};
-	oppo_fp_common:oppo_fp_common {
-		compatible = "oppo,fp_common";
+	oppo_fp_common:oppo_fp_common { //Slave driver and CS ID
+		compatible = "oppo,fp_common"; //Manufacture, and Model
 	};
-	oppo_secure_common:oppo_secure_common {
-		compatible = "oppo,secure_common";
+	oppo_secure_common:oppo_secure_common { //Slave driver and CS ID
+		compatible = "oppo,secure_common"; //Manufacture, and Model
 	};
-/******************************** Qingwen.Liu@RM.BSP.Fingerprint.Basic 2019/1/26 add for fpc fingerprint driver end ********************************/
-//#endif  /*VENDOR_EDIT*/
-
+	//#endif //VENDOR_EDIT
 	rt5081_pmu_eint: rt5081_pmu_eint {
 	};
 
@@ -4226,6 +4259,10 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		compatible = "mediatek,usb_iddig_bi_eint";
 	};
 	/* NFC start */
+	//ifdef VENDOR_EDIT
+	//wenjie.Liu@CN.NFC.Basic.Hardware.1182186, 2019/09/27,
+	// Remove for:NFC ST device
+	/*
 	nfc:nfc {
 		compatible = "mediatek,nfc-gpio-v2";
 		gpio-rst = <19>;
@@ -4233,6 +4270,8 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		gpio-irq = <20>;
 		gpio-irq-std = <&pio 20 0x0>;
 	};
+	//endif VENDOR_EDIT
+	*/
 
 	irq_nfc: irq_nfc {
 		compatible = "mediatek,irq_nfc-eint";

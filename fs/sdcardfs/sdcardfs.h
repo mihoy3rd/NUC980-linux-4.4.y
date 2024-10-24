@@ -114,6 +114,11 @@ typedef enum {
 	PERM_ANDROID_PACKAGE,
 	/* This node is "/Android/[data|media|obb]/[package]/cache" */
 	PERM_ANDROID_PACKAGE_CACHE,
+#ifdef VENDOR_EDIT
+//Jiemin.Zhu@PSW.Android.SdardFs, 2017/12/12, Add for sdcardfs delete dcim record
+	/* This node is "/DCIM" */
+	PERM_DCIM,
+#endif /* VENDOR_EDIT */
 } perm_t;
 
 struct sdcardfs_sb_info;
@@ -167,6 +172,11 @@ struct sdcardfs_inode_data {
 	bool under_android;
 	bool under_cache;
 	bool under_obb;
+#ifdef VENDOR_EDIT
+//Jiemin.Zhu@PSW.Android.SdardFs, 2017/12/12, Add for sdcardfs delete dcim record
+	bool under_dcim;
+	uid_t dcim_uid;
+#endif /* VENDOR_EDIT */
 };
 
 /* sdcardfs inode data in memory */
@@ -644,10 +654,20 @@ static inline bool str_n_case_eq(const char *s1, const char *s2, size_t len)
 
 static inline bool qstr_case_eq(const struct qstr *q1, const struct qstr *q2)
 {
+#ifdef VENDOR_EDIT
+//Jiemin.Zhu@PSW.Android.SdcardFs, 2018/04/13, Add for avoid creating cases-sensitive duplicate entries
+	return q1->len == q2->len && str_n_case_eq(q1->name, q2->name, q2->len);
+#else
 	return q1->len == q2->len && str_case_eq(q1->name, q2->name);
+#endif /* VENDOR_EDIT */
 }
 
 #define QSTR_LITERAL(string) QSTR_INIT(string, sizeof(string)-1)
 
+#ifdef VENDOR_EDIT
+//Jiemin.Zhu@PSW.Android.SdardFs, 2017/12/12, Add for sdcardfs delete dcim record
+int dcim_delete_uevent(struct dentry *dentry);
+int dcim_delete_skip(void);
+#endif /* VENDOR_EDIT */
 
 #endif	/* not _SDCARDFS_H_ */

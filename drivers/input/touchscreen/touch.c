@@ -207,7 +207,6 @@ bool __init tp_judge_ic_match(char * tp_ic_name)
     case 18011:
     case 18311:
     case 18611:
-    case 19350:
         is_tp_type_got_in_match = true;
         if (strstr(tp_ic_name, "nt36672") && strstr(boot_command_line, "tianma_nt36672")) {
             g_tp_dev_vendor = TP_TIANMA;
@@ -342,10 +341,6 @@ int tp_util_get_vendor(struct hw_resource *hw_res, struct panel_info *panel_data
                 memcpy(panel_data->manufacture_info.version, "0xBD1204", 8);
             }
         }
-    
-    } else if (is_project(OPPO_19151) || is_project(OPPO_19350)) {
-        panel_data->tp_type = TP_SAMSUNG;
-        memcpy(panel_data->manufacture_info.version, "0xFA1180000", 11);
     } else if (gpio_is_valid(hw_res->id1_gpio) || gpio_is_valid(hw_res->id2_gpio) || gpio_is_valid(hw_res->id3_gpio)) {
         tp_get_vendor_via_pin(hw_res, panel_data);
     } else {
@@ -381,7 +376,6 @@ int tp_util_get_vendor(struct hw_resource *hw_res, struct panel_info *panel_data
     case OPPO_18311:
     case OPPO_18011:
     case OPPO_18611:
-    case OPPO_19350
         if (strstr(boot_command_line, "depute_nt36672")) {    //noflash
                 panel_data->firmware_headfile.firmware_data = FW_18311_NT36672A_NF_DEPUTE;
                 panel_data->firmware_headfile.firmware_size = sizeof(FW_18311_NT36672A_NF_DEPUTE);

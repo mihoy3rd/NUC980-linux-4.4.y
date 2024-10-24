@@ -20,6 +20,11 @@
 #include "tfa98xx_tfafieldnames.h"
 #include "tfa_internal.h"
 
+#ifdef VENDOR_EDIT
+/*Yongpei.Yao@PSW.MM.AudioDriver.Codec, 2019/07/01, support 1216 box*/
+#include <linux/proc_fs.h>
+#include <soc/oppo/oppo_project.h>
+#endif
 /* handle macro for bitfield */
 #define TFA_MK_BF(reg, pos, len) ((reg<<8)|(pos<<4)|(len-1))
 
@@ -2742,6 +2747,8 @@ enum Tfa98xx_Error tfaRunSpeakerCalibration_result_v6(struct tfa_device *tfa, in
 	enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
 	int calibrateDone;
 	int spkr_count = 0;
+	int min_mohm = 6000;
+	int max_mohm = 10500;
 
 	/* return if there is no audio running */
 	if ((tfa->tfa_family == 2) && TFA_GET_BF(tfa, NOCLK))
@@ -2768,8 +2775,14 @@ enum Tfa98xx_Error tfaRunSpeakerCalibration_result_v6(struct tfa_device *tfa, in
 			pr_info("%s:Prim:%d mOhms, Sec:%d mOhms\n", __func__, tfa->mohm[0], tfa->mohm[1]);
 		}
 
-		//6ohm - 10.5ohm
-		if ((tfa->mohm[0] < 6000) || (tfa->mohm[0] > 10500)) {
+		if (get_project() == 19531) {
+			min_mohm = 4800;
+			max_mohm = 7800;
+		}
+		pr_info("%s:min_mohm = %d, max_mohm = %d\n", __func__, min_mohm, max_mohm);
+
+		//impedance check
+		if ((tfa->mohm[0] < min_mohm) || (tfa->mohm[0] > max_mohm)) {
 			pr_info("speaker_resistance_fail\n");
 			g_speaker_resistance_fail = true;
 

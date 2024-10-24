@@ -51,6 +51,11 @@ subdir-ccflags-y += -Werror -I$(src)/codec/$(MTK_CODEC)
 # vendor include path
 subdir-ccflags-y += -Werror -I$(src)/vendor
 
+#ifdef VENDOR_EDIT
+#Yongzhi.Zhang@PSW.MM.AudioDriver.Codec, 2019/09/27, add for SIA PA ALGO
+obj-$(CONFIG_SIA_PA_ALGO) += sia81xx/
+#endif /* VENDOR_EDIT */
+
 # Update pmic built flow to avoid codec init later than codec probe
 obj-y += codec/$(MTK_CODEC)/
 obj-y += vendor/
